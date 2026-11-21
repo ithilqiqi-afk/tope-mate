@@ -1,0 +1,10 @@
+{
+  "examType": "B",
+  "stage": "discussion",
+  "question": "Your group has five minutes to discuss whether universities should make community service a graduation requirement, and then reach one shared decision.",
+  "questionId": "b-discussion-014",
+  "transcript": "I am not sure a fixed requirement is the right tool, because some students already work part time to support their families. Perhaps the university could recognise voluntary service on the transcript instead of forcing everyone. That way we keep the incentive without punishing the students who have the least free time.",
+  "durationSeconds": 214,
+  "targetDurationSeconds": 300,
+  "rubric": "ruc_tope_official_bands_v1"
+}

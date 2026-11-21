@@ -25,6 +25,8 @@ jobs:
           node-version: '22'
       - name: Check question banks, configs, and contract fixtures
         run: node tests/validate.cjs
+      - name: Check frontend transcription/scoring/pipeline services (offline, stubbed fetch, no API key)
+        run: node tests/frontend-services.cjs
 
   ai-scoring:
     runs-on: ubuntu-latest
@@ -40,4 +42,20 @@ jobs:
         with:
           node-version: '22'
       - name: Run AI scoring module tests (offline, no API key)
+        run: npm test
+
+  speech-transcription:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: modules/speech-transcription
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run transcription module tests (offline, fake provider, no API key)
         run: npm test

@@ -1,169 +1,260 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": true,
-  "title": "Evaluation response candidate v0.1",
+  "$id": "tope-mate-evaluation-response-v1.4.0",
+  "title": "评分响应 Schema 1.4.0（冻结）",
+  "description": "HTTP 信封 + 完整报告对象。权威实现：modules/ai-scoring/src/{contract.mjs,ai-schema.mjs,practice-score.mjs}，合约文字见 modules/ai-scoring/docs/api_contract.md。v0.1 候选响应（scores.overall、scores.dimensions、evidence[].comment、version:0.1.0、notAssessed）已废弃。",
   "type": "object",
-  "required": [
-    "success",
-    "scores",
-    "strengths",
-    "weaknesses",
-    "suggestions",
-    "evidence",
-    "peel",
-    "improvedExpressions"
-  ],
+  "additionalProperties": false,
+  "required": ["success", "data", "meta"],
   "properties": {
-    "success": {
-      "const": true
-    },
-    "scores": {
+    "success": { "const": true },
+    "meta": {
       "type": "object",
+      "additionalProperties": false,
+      "required": ["questionId", "demoOnly"],
+      "properties": {
+        "questionId": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "demoOnly": { "type": "boolean" }
+      }
+    },
+    "data": { "$ref": "#/$defs/report" }
+  },
+  "$defs": {
+    "nullableScore": { "anyOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }] },
+    "strings": { "type": "array", "items": { "type": "string" } },
+    "peelStatus": { "enum": ["present", "partial", "absent", "not_assessed"] },
+    "peelDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quote", "note"],
+      "properties": {
+        "quote": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "note": { "type": "string" }
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
       "required": [
-        "overall",
-        "dimensions"
+        "schemaVersion", "mode", "examType", "stage",
+        "practiceScore", "scoreVersion", "scoreStatus", "scorePolicy", "scoreCoverage",
+        "overall", "rubricBasis", "officialAssessment", "scores", "dimensionFeedback",
+        "strengths", "weaknesses", "suggestions", "evidence",
+        "peel", "peelDetails", "improvedExpressions", "nextPractice",
+        "diagnostics", "unassessed", "errors"
       ],
       "properties": {
-        "overall": {
-          "anyOf": [
-            {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 100
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "dimensions": {
+        "schemaVersion": { "const": "1.4.0" },
+        "mode": { "enum": ["ai", "heuristic", "mock"] },
+        "examType": { "enum": ["B", "C"] },
+        "stage": { "enum": ["self_intro", "statement", "discussion", "speech", "qa"] },
+        "practiceScore": { "$ref": "#/$defs/nullableScore" },
+        "scoreVersion": { "type": "string", "minLength": 1 },
+        "scoreStatus": { "enum": ["complete", "partial", "not_scored"] },
+        "scorePolicy": {
           "type": "object",
-          "additionalProperties": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 100
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        }
-      }
-    },
-    "strengths": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "weaknesses": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "suggestions": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "evidence": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "quote",
-          "comment"
-        ],
-        "properties": {
-          "quote": {
-            "type": "string",
-            "minLength": 1
-          },
-          "comment": {
-            "type": "string",
-            "minLength": 1
-          },
-          "dimension": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "peel": {
-      "anyOf": [
-        {
-          "type": "object",
+          "required": ["version", "promptVersion", "modelId", "label", "scope", "scaleMin", "scaleMax", "weightBasis", "method", "configuredWeights", "disclaimer"],
           "properties": {
-            "point": {
-              "type": [
-                "string",
-                "null"
-              ]
+            "version": { "type": "string" },
+            "promptVersion": { "type": "string" },
+            "modelId": { "type": "string" },
+            "label": { "type": "string" },
+            "scope": { "const": "stage" },
+            "scaleMin": { "const": 0 },
+            "scaleMax": { "const": 100 },
+            "weightBasis": { "const": "product_defined_not_official" },
+            "method": { "type": "string" },
+            "configuredWeights": { "type": "object", "additionalProperties": { "type": "number" } },
+            "disclaimer": { "type": "string", "minLength": 1 },
+            "timingRule": { "anyOf": [{ "type": "string" }, { "type": "null" }] }
+          }
+        },
+        "scoreCoverage": {
+          "type": "object",
+          "required": ["configuredWeight", "assessedWeight", "coveragePercent", "assessedDimensions", "notAssessedDimensions", "comparisonKey", "comparisonNote"],
+          "properties": {
+            "configuredWeight": { "type": "number" },
+            "assessedWeight": { "type": "number" },
+            "coveragePercent": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "assessedDimensions": { "$ref": "#/$defs/strings" },
+            "notAssessedDimensions": { "$ref": "#/$defs/strings" },
+            "comparisonKey": { "type": "string" },
+            "comparisonNote": { "type": "string" }
+          }
+        },
+        "overall": {
+          "description": "兼容旧报告页的别名：score 恒等于 practiceScore，不得当作官方成绩展示。",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["score", "maxScore", "label", "disclaimer"],
+          "properties": {
+            "score": { "$ref": "#/$defs/nullableScore" },
+            "maxScore": { "const": 100 },
+            "label": { "enum": ["practice_reference", "not_scored", "insufficient_evidence"] },
+            "disclaimer": { "type": "string", "minLength": 1 }
+          }
+        },
+        "rubricBasis": {
+          "type": "object",
+          "required": ["version", "framework", "area", "dimensions", "assessmentMethod", "verificationStatus", "sourceUrl"]
+        },
+        "officialAssessment": {
+          "type": "object",
+          "required": ["scaleMin", "scaleMax", "level", "status", "source", "note"],
+          "properties": {
+            "scaleMin": { "const": 1 },
+            "scaleMax": { "const": 6 },
+            "level": { "type": "null" },
+            "status": { "type": "string" },
+            "source": { "type": "string" },
+            "note": { "type": "string" }
+          }
+        },
+        "scores": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["relevance", "organization", "development", "language", "interaction", "taskCompletion", "timeManagement"],
+          "properties": {
+            "relevance": { "$ref": "#/$defs/nullableScore" },
+            "organization": { "$ref": "#/$defs/nullableScore" },
+            "development": { "$ref": "#/$defs/nullableScore" },
+            "language": { "$ref": "#/$defs/nullableScore" },
+            "interaction": { "$ref": "#/$defs/nullableScore" },
+            "taskCompletion": { "$ref": "#/$defs/nullableScore" },
+            "timeManagement": { "$ref": "#/$defs/nullableScore" }
+          }
+        },
+        "dimensionFeedback": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["dimension", "score", "weight", "normalizedWeight", "rationale", "evidenceQuotes"],
+            "properties": {
+              "dimension": { "enum": ["relevance", "organization", "development", "language", "interaction", "taskCompletion", "timeManagement"] },
+              "score": { "$ref": "#/$defs/nullableScore" },
+              "weight": { "type": "number" },
+              "normalizedWeight": { "type": "number" },
+              "rationale": { "type": "string" },
+              "evidenceQuotes": { "$ref": "#/$defs/strings" }
+            }
+          }
+        },
+        "strengths": { "$ref": "#/$defs/strings" },
+        "weaknesses": { "$ref": "#/$defs/strings" },
+        "suggestions": { "$ref": "#/$defs/strings" },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["quote", "observation", "dimension"],
+            "properties": {
+              "quote": { "type": "string", "minLength": 1 },
+              "observation": { "type": "string" },
+              "dimension": { "type": "string" }
+            }
+          }
+        },
+        "peel": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["point", "explain", "example", "link"],
+          "properties": {
+            "point": { "$ref": "#/$defs/peelStatus" },
+            "explain": { "$ref": "#/$defs/peelStatus" },
+            "example": { "$ref": "#/$defs/peelStatus" },
+            "link": { "$ref": "#/$defs/peelStatus" }
+          }
+        },
+        "peelDetails": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["point", "explain", "example", "link"],
+          "properties": {
+            "point": { "$ref": "#/$defs/peelDetail" },
+            "explain": { "$ref": "#/$defs/peelDetail" },
+            "example": { "$ref": "#/$defs/peelDetail" },
+            "link": { "$ref": "#/$defs/peelDetail" }
+          }
+        },
+        "improvedExpressions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["original", "suggested", "reason"],
+            "properties": {
+              "original": { "type": "string" },
+              "suggested": { "type": "string" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "nextPractice": { "$ref": "#/$defs/strings" },
+        "diagnostics": {
+          "type": "object",
+          "required": ["wordCount", "detectedSignals", "timingNote"],
+          "properties": {
+            "wordCount": { "type": "integer", "minimum": 0 },
+            "detectedSignals": {
+              "type": "object",
+              "required": ["point", "explain", "example", "link"],
+              "properties": {
+                "point": { "type": "boolean" },
+                "explain": { "type": "boolean" },
+                "example": { "type": "boolean" },
+                "link": { "type": "boolean" }
+              }
             },
-            "explain": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "example": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "link": {
-              "type": [
-                "string",
-                "null"
-              ]
+            "timingNote": { "type": "string" }
+          }
+        },
+        "unassessed": { "$ref": "#/$defs/strings" },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": { "code": { "type": "string" }, "message": { "type": "string" } }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "description": "heuristic 是离线文本信号提示，不允许携带任何练习分。",
+          "if": { "properties": { "mode": { "const": "heuristic" } }, "required": ["mode"] },
+          "then": {
+            "properties": {
+              "practiceScore": { "type": "null" },
+              "scoreStatus": { "const": "not_scored" },
+              "scoreCoverage": { "properties": { "coveragePercent": { "const": 0 }, "assessedWeight": { "const": 0 } } },
+              "overall": { "properties": { "score": { "type": "null" } } }
             }
           }
         },
         {
-          "type": "null"
+          "description": "complete 必须真的算出了聚合分。",
+          "if": { "properties": { "scoreStatus": { "const": "complete" } }, "required": ["scoreStatus"] },
+          "then": { "properties": { "practiceScore": { "type": "integer" } } }
         }
       ]
-    },
-    "improvedExpressions": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": [
-          "original",
-          "improved"
-        ],
-        "properties": {
-          "original": {
-            "type": "string"
-          },
-          "improved": {
-            "type": "string",
-            "minLength": 1
-          },
-          "reason": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "notAssessed": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 1
-      }
-    },
-    "version": {
-      "const": "0.1.0"
     }
+  },
+  "x-frontend-rules": {
+    "practiceScore===null": "显示「暂无法评分」，不得渲染成 0 分。",
+    "scores[dim]===null": "显示「未评估」，不得渲染成 0 分。",
+    "scoreStatus==='partial'": "必须展示 coveragePercent 与未评估维度说明。",
+    "meta.demoOnly===true": "无论 data.mode 是什么，都要标注合成演示数据。",
+    "officialAssessment.level": "恒为 null，页面不得出现官方等级预测。",
+    "scope": "practiceScore 是单阶段练习参考分，不得写成整场考试总分。",
+    "mode==='heuristic'": "标注离线文本提示，不显示练习分。"
+  },
+  "x-transport": {
+    "400": "非法 JSON",
+    "405": "方法不允许",
+    "413": "请求体超过 128 KB",
+    "422": "字段无效或空转写（EMPTY_TRANSCRIPT）",
+    "503": "AI 模式缺 API Key",
+    "502": "模型服务或模型输出错误",
+    "504": "模型超时",
+    "failure-shape": "见 evaluation-error.schema.json；失败响应不含 data，也不回退成假分数。"
   }
 }

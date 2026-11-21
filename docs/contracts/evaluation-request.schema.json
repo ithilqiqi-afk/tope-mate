@@ -1,68 +1,58 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": true,
-  "title": "Evaluation request candidate v0.1",
+  "$id": "tope-mate-evaluation-request-v1.4.0",
+  "title": "评分请求 Schema 1.4.0（冻结）",
+  "description": "A 提交给 B 评分服务的请求。权威实现是 modules/ai-scoring/src/contract.mjs 的 validateRequest；本文件是它的前端可读镜像。v0.1 候选协议已废弃。",
   "type": "object",
-  "required": [
-    "examType",
-    "question",
-    "stage",
-    "transcript",
-    "durationSeconds",
-    "rubric"
-  ],
+  "additionalProperties": false,
+  "required": ["examType", "stage", "question", "transcript", "durationSeconds"],
   "properties": {
-    "examType": {
-      "enum": [
-        "B",
-        "C"
-      ]
+    "examType": { "enum": ["B", "C"] },
+    "stage": {
+      "description": "B 侧阶段键。A 必须先做映射：intro→self_intro，prepare→（不提交评分），presentation→statement，discussion→discussion，speech→speech，qa→qa。",
+      "enum": ["self_intro", "statement", "discussion", "speech", "qa"]
     },
-    "question": {
-      "type": "object",
-      "required": [
-        "id",
-        "text"
-      ],
-      "properties": {
-        "id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "text": {
-          "type": "string",
-          "minLength": 1
-        },
-        "candidateKey": {
-          "enum": [
-            "A",
-            "B",
-            "C"
-          ]
-        },
-        "discussion": {
-          "type": "string"
+    "question": { "type": "string", "minLength": 1, "maxLength": 3000 },
+    "questionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "transcript": { "type": "string", "minLength": 1, "maxLength": 30000 },
+    "durationSeconds": { "type": "number", "minimum": 0, "maximum": 3600 },
+    "targetDurationSeconds": { "type": "number", "exclusiveMinimum": 0, "maximum": 3600 },
+    "rubric": { "anyOf": [{ "type": "string", "maxLength": 200 }, { "type": "null" }] },
+    "assessedSpeaker": { "enum": ["A", "B", "C"] },
+    "speakerTurns": {
+      "type": "array",
+      "maxItems": 150,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["speaker", "text"],
+        "properties": {
+          "speaker": { "enum": ["A", "B", "C", "examiner"] },
+          "text": { "type": "string", "maxLength": 3000 }
         }
       }
-    },
-    "stage": {
-      "enum": [
-        "intro",
-        "presentation",
-        "discussion",
-        "speech",
-        "qa"
-      ]
-    },
-    "transcript": {
-      "type": "string"
-    },
-    "durationSeconds": {
-      "type": "number",
-      "minimum": 0
-    },
-    "rubric": {
-      "type": "object"
     }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "examType": { "const": "B" } }, "required": ["examType"] },
+      "then": { "properties": { "stage": { "enum": ["self_intro", "statement", "discussion"] } } }
+    },
+    {
+      "if": { "properties": { "examType": { "const": "C" } }, "required": ["examType"] },
+      "then": { "properties": { "stage": { "enum": ["speech", "qa"] } } }
+    }
+  ],
+  "x-constraints": {
+    "questionId": "仅作题目追踪标识，不进入模型提示词、不参与评分判断，原样出现在响应 meta.questionId。",
+    "transcript": "必须是用户确认过的转写文本（原始转写或用户编辑后的文本），空串会被服务端拒绝为 EMPTY_TRANSCRIPT。",
+    "targetDurationSeconds": "缺失时时间控制维度不评估，分数覆盖率随之下降。",
+    "speakerTurns": "只允许真实带说话人标签的轮次；examiner 不算同伴。缺少真实轮次时互动维度为 null。",
+    "audio": "任何音频字节都不进入评分请求，评分只看文本。"
+  },
+  "x-deprecated-v0.1": {
+    "question": "v0.1 是 {id,text,candidateKey,discussion} 对象；1.4.0 改为英文题干字符串，追踪标识改用 questionId。",
+    "rubric": "v0.1 是对象；1.4.0 是版本标签字符串或 null。",
+    "stage": "v0.1 直接接受 A 侧的 intro/presentation；1.4.0 只接受 self_intro/statement，映射在前端完成。"
   }
 }

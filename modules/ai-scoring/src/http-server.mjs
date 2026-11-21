@@ -3,9 +3,11 @@ import {pathToFileURL} from 'node:url';
 import {validateRequest,SCHEMA_VERSION} from './contract.mjs';
 import {scoreHeuristic} from './scorer.mjs';
 import {scoreWithOpenAI,resolveTimeoutMs} from './provider.mjs';
+import {scoreWithBailian,DEFAULT_BAILIAN_MODEL,DEFAULT_BAILIAN_TRANSPORT,BAILIAN_TRANSPORTS,resolveBailianTransport} from './bailian-provider.mjs';
 
 export const MAX_BODY_BYTES = 128*1024;
 export const ALLOWED_ORIGINS = new Set(['http://localhost:5173','http://127.0.0.1:5173']);
+export const PROVIDERS = new Set(['openai','bailian']);
 const MODULE_VERSION = '0.6.0';
 
 // Client-safe messages only: never forward provider internals, stacks or request data.
@@ -18,8 +20,18 @@ const ERROR_TABLE = {
   PROVIDER_INCOMPLETE:{status:502,message:'模型输出不完整，本次不生成评分，请重试。',retryable:true},
   PROVIDER_REFUSAL:{status:502,message:'模型拒绝处理本次请求，本次不生成评分。',retryable:false},
   INVALID_MODEL_OUTPUT:{status:502,message:'模型返回结果未通过评分校验，本次不生成评分，请重试。',retryable:true},
-  PROVIDER_TIMEOUT:{status:504,message:'模型响应超时，请稍后重试或使用离线模式。',retryable:true}
+  PROVIDER_TIMEOUT:{status:504,message:'模型响应超时，请稍后重试或使用离线模式。',retryable:true},
+  PROVIDER_CONFIG_ERROR:{status:503,message:'百炼服务地址或接口不可用：默认地址 https://dashscope.aliyuncs.com/compatible-mode/v1 已实测可用；若自行填写 BAILIAN_BASE_URL，请把 {WorkspaceId} 换成控制台里的真实业务空间 ID，并确认接口为 responses 或 chat/completions。',retryable:false},
+  PROVIDER_AUTH_ERROR:{status:503,message:'百炼鉴权或业务空间调用权限校验未通过：请确认 API Key 有效、与地域匹配，且该业务空间已开通所用模型。',retryable:false},
+  PROVIDER_MODEL_UNAVAILABLE:{status:502,message:'所用模型在当前业务空间或地域不可用：请核对模型 ID 与业务空间权限，不要自行切换地域或开通付费服务。',retryable:false}
 };
+
+/** 供应商选择只影响传输层；评分算法与 Schema 1.4.0 信封两种通路完全一致。 */
+export function resolveProvider(value){
+  const name=String(value||'openai').trim().toLowerCase();
+  if(!PROVIDERS.has(name)) throw new RangeError(`Unsupported SCORING_PROVIDER: ${value}`);
+  return name;
+}
 
 function corsHeaders(req){
   const origin=req.headers.origin;
@@ -60,9 +72,16 @@ function readBody(req){
   });
 }
 
-export function createScoringServer({mode='heuristic',provider=process.env.SCORING_PROVIDER||'openai',apiKey=provider==='bailian'?process.env.DASHSCOPE_API_KEY:process.env.OPENAI_API_KEY,model,fetchImpl=globalThis.fetch,timeoutMs}={}){
+export function createScoringServer({mode='heuristic',provider=process.env.SCORING_PROVIDER||'openai',apiKey=provider==='bailian'?(process.env.BAILIAN_API_KEY||process.env.DASHSCOPE_API_KEY):process.env.OPENAI_API_KEY,bailianApiKey=process.env.BAILIAN_API_KEY||process.env.DASHSCOPE_API_KEY||apiKey,model=process.env.OPENAI_MODEL,bailianModel=process.env.BAILIAN_MODEL||DEFAULT_BAILIAN_MODEL,bailianBaseUrl=process.env.BAILIAN_BASE_URL,bailianTransport=process.env.BAILIAN_SCORING_TRANSPORT||DEFAULT_BAILIAN_TRANSPORT,bailianReasoningEffort=process.env.BAILIAN_SCORING_REASONING_EFFORT||'',bailianEnableThinking=/^(1|true|yes)$/i.test(process.env.BAILIAN_ENABLE_THINKING||''),fetchImpl=globalThis.fetch,timeoutMs}={}){
   if(mode!=='heuristic' && mode!=='ai') throw new RangeError(`Unsupported SCORING_MODE: ${mode}`);
-  if(provider!=='openai' && provider!=='bailian') throw new RangeError(`Unsupported SCORING_PROVIDER: ${provider}`);
+  const activeProvider=resolveProvider(provider);
+  // 接口名与供应商一样只影响传输层；非法值在构造阶段抛出，避免运行期静默回退。
+  const activeTransport=resolveBailianTransport(bailianTransport);
+  // 百炼绝不复用 OPENAI_API_KEY：apiKey 的默认值已按供应商分流，显式传入 bailianApiKey:'' 时不回退。
+  const activeKey=activeProvider==='bailian'?bailianApiKey:apiKey;
+  const activeModel=activeProvider==='bailian'?bailianModel:model;
+  // 超时统一走 resolveTimeoutMs：显式值 > SCORING_TIMEOUT_MS > 供应商默认（bailian 120000 / openai 45000），钳制 1000–120000。
+  const activeTimeoutMs=resolveTimeoutMs(activeProvider,timeoutMs);
   return http.createServer(async (req,res)=>{
     try{
       const path=(req.url||'').split('?')[0];
@@ -72,7 +91,10 @@ export function createScoringServer({mode='heuristic',provider=process.env.SCORI
         return;
       }
       if(path==='/health' && req.method==='GET'){
-        sendJson(req,res,200,{success:true,data:{status:'ok',mode,schemaVersion:SCHEMA_VERSION,moduleVersion:MODULE_VERSION,aiKeyConfigured:Boolean(apiKey)},meta:{questionId:null,demoOnly:false}});
+        // heuristic 模式不涉及供应商，保持 B 钉住的 5 键形状；ai 模式才追加供应商/接口/超时/模型诊断字段。
+        const data={status:'ok',mode,schemaVersion:SCHEMA_VERSION,moduleVersion:MODULE_VERSION,aiKeyConfigured:Boolean(activeKey)};
+        if(mode==='ai') Object.assign(data,{provider:activeProvider,transport:activeProvider==='bailian'?activeTransport:null,timeoutMs:activeTimeoutMs,model:activeModel});
+        sendJson(req,res,200,{success:true,data,meta:{questionId:null,demoOnly:false}});
         return;
       }
       if(path==='/api/evaluate' && req.method==='POST'){
@@ -90,9 +112,17 @@ export function createScoringServer({mode='heuristic',provider=process.env.SCORI
         const questionId=typeof request.questionId==='string'?request.questionId:null;
         // Error priority: empty transcript (422) outranks missing API key (503); never call the model for empty input.
         if(!request.transcript.trim()) return sendScoringError(req,res,'EMPTY_TRANSCRIPT');
-        if(mode==='ai' && !apiKey) return sendScoringError(req,res,'API_KEY_MISSING');
+        if(mode==='ai' && !activeKey) return sendScoringError(req,res,'API_KEY_MISSING');
+        // 百炼默认 responses 通路走成员 B 实测通过的 provider.mjs（嵌套 json_schema、16384 token、effort=low）；
+        // chat 是保留的备用通路，只有显式 BAILIAN_SCORING_TRANSPORT=chat 才用到，从未真实验证。
+        if(mode==='ai'&&activeProvider==='bailian'&&/\{WorkspaceId\}/.test(String(bailianBaseUrl||process.env.BAILIAN_BASE_URL||'')))
+          return sendScoringError(req,res,'PROVIDER_CONFIG_ERROR');
         const result=mode==='ai'
-          ? await scoreWithOpenAI(request,{provider,apiKey,model,fetchImpl,timeoutMs})
+          ? (activeProvider==='bailian'
+              ? (activeTransport==='chat'
+                  ? await scoreWithBailian(request,{apiKey:activeKey,model:activeModel,baseUrl:bailianBaseUrl,transport:'chat',reasoningEffort:bailianReasoningEffort,fetchImpl,timeoutMs:activeTimeoutMs,enableThinking:bailianEnableThinking})
+                  : await scoreWithOpenAI(request,{provider:'bailian',apiKey:activeKey,model:activeModel,baseUrl:bailianBaseUrl,fetchImpl,timeoutMs:activeTimeoutMs}))
+              : await scoreWithOpenAI(request,{provider:'openai',apiKey:activeKey,model:activeModel,fetchImpl,timeoutMs:activeTimeoutMs}))
           : scoreHeuristic(request);
         if(Array.isArray(result.errors) && result.errors.length>0) return sendScoringError(req,res,result.errors[0].code);
         sendJson(req,res,200,{success:true,data:result,meta:{questionId,demoOnly:false}});
@@ -115,15 +145,34 @@ if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href){
     console.error(`SCORING_MODE 仅支持 heuristic 或 ai，收到：${mode}`);
     process.exit(1);
   }
-  if(provider!=='openai' && provider!=='bailian'){
+  let activeProvider;
+  try{activeProvider=resolveProvider(provider);}
+  catch{
     console.error(`SCORING_PROVIDER 仅支持 openai 或 bailian，收到：${provider}`);
     process.exit(1);
   }
-  const keyEnv=provider==='bailian'?'DASHSCOPE_API_KEY':'OPENAI_API_KEY';
-  if(mode==='ai' && !process.env[keyEnv])
-    console.warn(`警告：SCORING_MODE=ai 但未配置 ${keyEnv}，/api/evaluate 将返回 503。`);
-  const server=createScoringServer({mode,provider});
+  // 只报告「有没有配」，绝不打印任何密钥内容；缺密钥也照常启动，便于无 Key 演示。
+  let activeTransport;
+  try{activeTransport=resolveBailianTransport(process.env.BAILIAN_SCORING_TRANSPORT);}
+  catch{
+    console.error(`BAILIAN_SCORING_TRANSPORT 仅支持 ${[...BAILIAN_TRANSPORTS].join(' 或 ')}，收到：${process.env.BAILIAN_SCORING_TRANSPORT}`);
+    process.exit(1);
+  }
+  const timeoutMs=resolveTimeoutMs(activeProvider);
+  if(mode==='ai'){
+    const keyName=activeProvider==='bailian'?'BAILIAN_API_KEY 或 DASHSCOPE_API_KEY':'OPENAI_API_KEY';
+    const configured=activeProvider==='bailian'
+      ? Boolean(process.env.BAILIAN_API_KEY||process.env.DASHSCOPE_API_KEY)
+      : Boolean(process.env.OPENAI_API_KEY);
+    if(!configured) console.warn(`警告：SCORING_MODE=ai 但未配置 ${keyName}，/api/evaluate 将返回 503。`);
+    if(activeProvider==='bailian'&&/\{WorkspaceId\}/.test(process.env.BAILIAN_BASE_URL||''))
+      console.warn('警告：BAILIAN_BASE_URL 里仍是 {WorkspaceId} 占位符。北京地域已实测 https://dashscope.aliyuncs.com/compatible-mode/v1 可用，或替换为控制台里的真实业务空间 ID。');
+    // 成员 B 的真实评分调用耗时 59.09 秒（默认 responses 通路，reasoning.effort=low），超时设得过短只会得到 504。
+    if(activeProvider==='bailian'&&timeoutMs<60000)
+      console.warn(`警告：SCORING_TIMEOUT_MS=${timeoutMs} 小于真实调用的实测耗时（约 59 秒），建议至少 120000。`);
+  }
+  const server=createScoringServer({mode,provider:activeProvider,bailianTransport:activeTransport,timeoutMs});
   server.listen(port,'127.0.0.1',()=>{
-    console.log(`TOPE Mate scoring server (${mode}/${provider}) listening on http://127.0.0.1:${port} (timeout ${resolveTimeoutMs(provider)/1000}s)`);
+    console.log(`TOPE Mate scoring server (${mode}, provider=${activeProvider}${activeProvider==='bailian'?`, transport=${activeTransport}`:''}, timeout=${timeoutMs}ms) listening on http://127.0.0.1:${port}`);
   });
 }

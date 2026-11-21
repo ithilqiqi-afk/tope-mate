@@ -1,0 +1,5 @@
+# cmd.exe 按字节偏移重读批处理，裸 LF 会让它报「文件名、目录名或卷标语法不正确」。
+# Git 默认把文本按 LF 入库，Linux CI 检出后 tests/validate.cjs 的 CRLF 断言就会失败，
+# 所以这里强制批处理在任何平台检出都是 CRLF（本机 core.autocrlf 不再决定结果）。
+*.bat text eol=crlf
+*.cmd text eol=crlf

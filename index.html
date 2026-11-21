@@ -28,16 +28,18 @@
 <footer class="footbar">
   <span>TOPE Mate · 第二版 · 题库来自历年真题与复习资料整理</span>
   <span class="foot-sep">|</span>
-  <span>录音只保存在本机内存，不上传</span>
+  <span>录音只保存在本机内存；只有你确认后才会发给本机的本地服务</span>
   <span class="foot-sep">|</span>
-  <span>评分反馈为示例数据，未接入真实 AI</span>
+  <span>报告页分两种：本地示例数据，与按阶段提交的真实 AI 分析</span>
 </footer>
 
 <!-- 考试时长与录音开关配置：可直接改这个文件，也可在页面「考试设置」里临时调整 -->
 <script src="config/exam-config.js"></script>
-<!-- 语音转写 / AI 评分接口占位（当前未接入真实服务，只定义调用约定） -->
+<!-- 语音转写 / AI 评分接入层（地址在 config/exam-config.js 的 services 段；未配置时页面只会显示「尚未接入」） -->
 <script src="services/transcription.js"></script>
 <script src="services/evaluation.js"></script>
+<!-- 转写 → 校对 → 评分的编排与防重复/防过期状态 -->
+<script src="services/ai-pipeline.js"></script>
 <!-- 麦克风录音模块（原生 MediaRecorder，无依赖） -->
 <script src="recorder.js"></script>
 <!-- 题库数据（纯数据对象，结构与 JSON 一致，方便以后换成 .json） -->

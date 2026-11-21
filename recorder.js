@@ -1,7 +1,9 @@
 /* ───────────────────────── TOPE Mate 录音模块 ─────────────────────────
    只用浏览器原生 getUserMedia + MediaRecorder，无第三方依赖。
    每个考试阶段的录音独立存在 R.data[phaseKey]，互不覆盖：
-     R.data.speech = { blob, mimeType, durationSeconds, url, stage, name }
+     R.data.speech = { blob, mimeType, durationSeconds, url, stage, name, complete }
+   complete:true 只在浏览器确实派发过该段录音的 stop 事件后才成立；缺结尾的段落
+   仍然可以本地回放和下载，但 complete:false，前端不得把它当成完整回答送去评分。
    本模块不碰 DOM（回放与下载控件由 app.js 渲染），方便以后把 blob 交给转写服务。
    注意：录音只在内存里，不写盘、不上传，刷新页面即消失。
 ───────────────────────────────────────────────────────────────── */
@@ -96,7 +98,8 @@
     sessionId: 0,
     _ticket: 0,
     epoch: 0,
-    /* 本轮待保存的录音：{ key, name, sessionId, epoch, buffers }，buffers 按录音器启动顺序排列 */
+    /* 本轮待保存的录音：{ key, name, sessionId, epoch, groups }，groups 按录音器启动顺序排列，
+       每组 { chunks, stopped, error }：stopped 是这一段的录音器有没有真的派发过 stop 事件 */
     pending: null,
     /* 正在进行的一次收尾（同一时刻只允许一次），以及暂停兜底里上一段的收尾承诺 */
     _stopping: null,
@@ -356,24 +359,30 @@
       const self = this;
       /* 麦克风已释放或已经没有归属阶段（换轮次、回首页、旧请求作废）时绝不启动录音器 */
       if (!this.stream || !this.key) return false;
-      /* 每个录音器一条独立的分片数组，按启动顺序挂在 buffers 上。
+      /* 每个录音器一组：{ chunks, stopped }，按启动顺序挂在 pending.groups 上。
          「停一段、续一段」的暂停兜底方案里，旧录音器可能在新录音器启动后才吐出
-         最后一块；分成两条再按序拼接，避免两个录音器的数据交叉成一个坏文件。 */
-      const buf = [];
+         最后一块；分组既避免两个录音器的数据交叉成一个坏文件，也让每一段
+         各自有没有真正收尾可以被单独确认。 */
+      const group = { chunks: [], stopped: false, error: false };
       if (!this.pending || this.pending.key !== this.key) {
         this.pending = {
           key: this.key, name: this.phaseName || this.key,
-          sessionId: this.sessionId, epoch: this.epoch, buffers: []
+          sessionId: this.sessionId, epoch: this.epoch, groups: []
         };
       }
-      this.pending.buffers.push(buf);
+      this.pending.groups.push(group);
       const rec = this.mimeType
         ? new MediaRecorder(this.stream, { mimeType: this.mimeType })
         : new MediaRecorder(this.stream);
+      rec.__topeGroup = group;
       rec.ondataavailable = function (ev) {
-        if (ev && ev.data && ev.data.size > 0) buf.push(ev.data);
+        if (ev && ev.data && ev.data.size > 0) group.chunks.push(ev.data);
       };
+      /* 创建时就挂上 onstop：录音器也可能在我们去收尾之前自己结束（设备被拔掉、
+         轨道被系统关掉）。那一刻的 stop 事件没人接，这一段就只能一直算「未确认」。 */
+      rec.onstop = function () { group.stopped = true; };
       rec.onerror = function (ev) {
+        group.error = true;
         self.message = "录音中断：" + ((ev && ev.error && ev.error.name) || "未知错误");
       };
       this.rec = rec;
@@ -392,11 +401,19 @@
     },
 
     /* 关闭当前录音器，等最后一块数据到齐（带兜底时限）。
-       返回值如实说明结束原因，调用方据此判断这一段是否完整。 */
+       返回值如实说明结束原因，调用方据此判断这一段是否完整：
+         stopped  —— 收到过 stop 事件（规范保证它在所有剩余分片之后派发），数据齐了
+         timeout  —— 兜底时限内没等到 stop，只能算未确认
+         error    —— stop() 本身抛错，未确认
+         inactive_unconfirmed —— 录音器已自行结束但 stop 事件还没接回来，未确认
+         none     —— 压根没有录音器
+       未确认的段由 _watchLate 继续盯：一拿到 stop 事件就把结论改成完整。 */
     _close() {
+      const self = this;
       const rec = this.rec;
       this.rec = null;
       if (!rec) return Promise.resolve("none");
+      const group = rec.__topeGroup || null;
       return new Promise(function (resolve) {
         let done = false;
         let timer = 0;
@@ -406,38 +423,67 @@
           if (timer) clearTimeout(timer);
           resolve(why);
         };
-        timer = setTimeout(function () { fin("timeout"); }, CLOSE_TIMEOUT_MS);
+        /* 收尾没确认就先挂个晚到监听：_save 会按 _groupsClosed 重新算 complete，
+           stop 事件在 _commit 之前回来就直接判完整，之后才回来则把已保存的那段补全 */
+        const watch = function () {
+          const info = self.pending;
+          if (info && group && info.groups.indexOf(group) >= 0) self._watchLate(info, rec);
+        };
         try {
-          if (rec.state === "inactive") { fin("inactive"); return; }
-          rec.onstop = function () { fin("stopped"); };
+          if (rec.state === "inactive") {
+            /* 「已经不在录」不等于「数据交完了」：只有真的收到过 stop 事件才算确认 */
+            if (group && group.stopped) { fin("stopped"); return; }
+            watch();
+            fin("inactive_unconfirmed");
+            return;
+          }
+          timer = setTimeout(function () {
+            watch();
+            fin("timeout");
+          }, CLOSE_TIMEOUT_MS);
+          rec.onstop = function () {
+            if (group) group.stopped = true;
+            fin("stopped");
+          };
           rec.stop();
         } catch (e) { fin("error"); }
       });
     },
 
-    /* 超时兜底之后，如果浏览器又把剩下的分片交回来了，就把那一段重拼成完整文件 */
+    /* 本 pending 里每一段录音是否都被 stop 事件确认过——这是 complete:true 的唯一依据。
+       多收到一块迟到的 dataavailable 只说明数据变多了，不说明录音已经结束。 */
+    _groupsClosed(info) {
+      const groups = (info && info.groups) || [];
+      return groups.length > 0 && groups.every(function (g) { return g.stopped === true && g.error !== true; });
+    },
+
+    /* 超时兜底之后，浏览器还可能把剩下的分片甚至最终的 stop 事件补回来。
+       补分片只改数据、不改结论：complete 一律按 _groupsClosed 重新算，
+       绝不能因为多拿到一块 dataavailable 就认定完整录音已经结束。 */
     _watchLate(info, rec) {
       if (!rec || !info) return;
       const self = this;
+      const group = rec.__topeGroup || null;
       const until = Date.now() + LATE_WINDOW_MS;
-      const late = function () {
+      const resave = function () {
         if (Date.now() > until) return;
         /* 换轮次或那一段本来就被丢弃了，就不要再把旧数据写回去 */
         if (self.sessionId !== info.sessionId || !self.data[info.key]) return;
-        self._save(info, true, true);
+        self._save(info, self._groupsClosed(info), true);
       };
       try {
-        rec.onstop = late;
+        rec.onstop = function () {
+          if (group) group.stopped = true;
+          resave();
+        };
         rec.ondataavailable = function (ev) {
           if (Date.now() > until) return;
-          const b = info.buffers[info.buffers.length - 1];
-          if (ev && ev.data && ev.data.size > 0 && b) {
-            b.push(ev.data);
-            /* 迟到的分片先到、onstop 还没来时也补一次，尽量不留缺口 */
-            late();
+          if (ev && ev.data && ev.data.size > 0 && group) {
+            group.chunks.push(ev.data);
+            resave();
           }
         };
-      } catch (e) { /* 已经被回收的录音器，保持 complete:false 即可 */ }
+      } catch (e) { /* 已经被回收的录音器，保持未确认即可 */ }
     },
 
     _accumulate() {
@@ -450,9 +496,9 @@
        keepUrl:true 用于晚到数据的补录：报告页可能已经拿旧 URL 在播放，不能撤销它。 */
     _save(info, complete, keepUrl) {
       const parts = [];
-      for (let i = 0; i < info.buffers.length; i++) {
-        const b = info.buffers[i];
-        for (let j = 0; j < b.length; j++) parts.push(b[j]);
+      for (let i = 0; i < info.groups.length; i++) {
+        const chunks = info.groups[i].chunks;
+        for (let j = 0; j < chunks.length; j++) parts.push(chunks[j]);
       }
       if (!parts.length) return null;
       const type = this.mimeType || (parts[0] && parts[0].type) || "audio/webm";
@@ -465,19 +511,21 @@
       const rec = {
         stage: info.key,
         name: info.name || info.key,
+        /* 录音属于哪一轮考试：转写/评分结果要靠它丢弃跨轮次的迟到响应 */
+        sessionId: info.sessionId,
         blob: blob,
         mimeType: blob.type || type,
         durationSeconds: Math.max(1, Math.round((info.activeMs || 0) / 1000)),
         url: url,
         savedAt: Date.now(),
         complete: !!complete,
-        note: complete ? "" : "浏览器未在 " + (CLOSE_TIMEOUT_MS / 1000) + " 秒内交回最后一块数据，这段音频可能缺少结尾；后续晚到的数据会自动补进来。"
+        note: complete ? "" : "浏览器没有交回这条录音的结束事件，音频可能缺少结尾；后续晚到的数据会自动补进来，补全后这里会改成完整。"
       };
       this.data[info.key] = rec;
       return rec;
     },
 
-    /* why 来自 _close()：stopped/inactive/none 视为完整，timeout/error 视为不完整 */
+    /* why 来自 _close()：只有每一段都确认收到 stop 事件才算完整录音 */
     _commit(why) {
       const info = this.pending;
       this.pending = null;
@@ -487,12 +535,12 @@
         this.lastSave = { key: info.key, name: info.name || info.key, status: "cancelled", why: why };
         return null;
       }
-      const complete = why !== "timeout" && why !== "error";
+      const confirmed = (why === "stopped" || why === "none") && this._groupsClosed(info);
       info.activeMs = this.activeMs;
-      const rec = this._save(info, complete);
-      this.lastSave = { key: info.key, name: info.name || info.key, status: rec ? (complete ? "saved" : "timeout") : "no_data", why: why };
-      if (rec && !complete) {
-        this.warning = "「" + this.lastSave.name + "」未拿到最后的数据，已保留 " + mmss(rec.durationSeconds) + " 可用部分。";
+      const rec = this._save(info, confirmed);
+      this.lastSave = { key: info.key, name: info.name || info.key, status: rec ? (confirmed ? "saved" : "timeout") : "no_data", why: why };
+      if (rec && !confirmed) {
+        this.warning = "「" + this.lastSave.name + "」未拿到结束事件，已保留 " + mmss(rec.durationSeconds) + " 可用部分。";
       } else if (!rec) {
         this.warning = "「" + this.lastSave.name + "」没有拿到任何音频数据。";
         this.lost.push({ key: info.key, name: this.lastSave.name, reason: why === "error" ? "录音器停止时报错，未拿到任何数据" : "没有收到任何音频分片（标签页可能被浏览器挂起）" });
@@ -524,28 +572,25 @@
         this._pendingClose = null;
         if (!rest || !this.pending) return Promise.resolve(null);
         const self = this;
-        this._stopping = rest.then(function () {
-          const rec = self._commit("stopped");
+        /* 用上一段收尾的真实结论，不能假定它一定正常 stop 了 */
+        this._stopping = rest.then(function (why) {
+          const rec = self._commit(why);
           self._stopping = null;
           return rec;
         });
         return this._stopping;
       }
       const self = this;
-      const lastRec = this.rec;
       const name = this.phaseName;
       const waiting = this._pendingClose;
       this._pendingClose = null;
       this._accumulate();
       const run = function () {
-        const info = self.pending;
         return self._close().then(function (why) {
           self.fallbackPaused = false;
           const rec = self._commit(why);
           self.key = null;
           self.phaseName = name;
-          /* 没等到 onstop 的那一段，之后浏览器还可能把剩余分片补回来 */
-          if ((why === "timeout" || why === "error") && info) self._watchLate(info, lastRec);
           if (self.state === "recording" || self.state === "paused") {
             self.state = self.stream ? "ready" : "idle";
             self.message = self.warning || (self.stream && rec
