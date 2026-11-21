@@ -65,40 +65,62 @@ export function normalizeAIResult(raw,req,{modelId='unconfigured'}={}){
   }
   const diag=analyzeText(req.transcript,req.durationSeconds,req.targetDurationSeconds);
   clean.diagnostics={wordCount:diag.wordCount,detectedSignals:diag.detectedSignals,timingNote:diag.timingNote};
+  // The model declares timeManagement unassessed, but the backend scores it when a target duration exists.
   clean.unassessed=[...new Set([...clean.unassessed,'pronunciation','prosody','audio_fluency',...scoreResult.scoreCoverage.notAssessedDimensions,
-    ...((req.examType==='B'&&req.stage==='discussion'&&!hasInteractionEvidence(req))?['group_interaction_without_speaker_turns']:[])])];
+    ...((req.examType==='B'&&req.stage==='discussion'&&!hasInteractionEvidence(req))?['group_interaction_without_speaker_turns']:[])])].filter(k=>!(k in clean.scores)||clean.scores[k]===null);
   clean.errors=[];
   return clean;
 }
+const PROVIDERS={
+  openai:{keyEnv:'OPENAI_API_KEY',modelEnv:'OPENAI_MODEL',defaultModel:'gpt-4o-mini',defaultBaseUrl:'https://api.openai.com/v1',maxOutputTokens:3600,defaultTimeoutMs:45000},
+  // Qwen3.8 counts reasoning tokens against max_output_tokens, so the cap must cover thinking + report.
+  // effort=low keeps latency bounded: a real qwen3.8-flash call at default effort took ~119s, past the old 45s cap.
+  bailian:{keyEnv:'DASHSCOPE_API_KEY',modelEnv:'BAILIAN_MODEL',defaultModel:'qwen3.8-flash',baseUrlEnv:'BAILIAN_BASE_URL',defaultBaseUrl:'https://dashscope.aliyuncs.com/compatible-mode/v1',maxOutputTokens:16384,defaultTimeoutMs:120000}
+};
+export const SCORING_PROVIDERS=Object.keys(PROVIDERS);
+export function resolveTimeoutMs(provider,timeoutMs){
+  const raw=timeoutMs!==undefined?timeoutMs:(process.env.SCORING_TIMEOUT_MS!==undefined?Number(process.env.SCORING_TIMEOUT_MS):PROVIDERS[provider].defaultTimeoutMs);
+  return Math.max(1000,Math.min(Number.isFinite(raw)?raw:PROVIDERS[provider].defaultTimeoutMs,120000));
+}
 /** Server-side only. Never call directly from public browser with an API key. */
-export async function scoreWithOpenAI(request,{apiKey=process.env.OPENAI_API_KEY,model=process.env.OPENAI_MODEL||'gpt-4o-mini',fetchImpl=globalThis.fetch,timeoutMs=45000}={}){
+export async function scoreWithOpenAI(request,{provider=process.env.SCORING_PROVIDER||'openai',apiKey,model,baseUrl,fetchImpl=globalThis.fetch,timeoutMs}={}){
   validateRequest(request);
+  const cfg=PROVIDERS[provider];
+  if(!cfg)throw new RangeError(`Unsupported SCORING_PROVIDER: ${provider}`);
+  const resolvedKey=apiKey!==undefined?apiKey:process.env[cfg.keyEnv];
+  const resolvedModel=model||process.env[cfg.modelEnv]||cfg.defaultModel;
+  const resolvedBaseUrl=(baseUrl||(cfg.baseUrlEnv&&process.env[cfg.baseUrlEnv])||cfg.defaultBaseUrl).replace(/\/+$/,'');
   if(!request.transcript.trim())return blankResult(request,'ai');
-  if(!apiKey) return errorResult(request,'API_KEY_MISSING','服务器尚未配置 OPENAI_API_KEY。');
+  if(!resolvedKey) return errorResult(request,'API_KEY_MISSING',`服务器尚未配置 ${cfg.keyEnv}。`);
   if(typeof fetchImpl!=='function') return errorResult(request,'FETCH_UNAVAILABLE','运行环境不支持 fetch。请使用 Node.js 18+。');
   const focus=rubricFor(request);
   const scoreConfig=getPracticeScoreConfig(request);
   // questionId is a client-side tracking label only; it must not influence the model.
   const {questionId,...modelRequest}=request;
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),Math.max(1000,Math.min(timeoutMs,120000)));
+  const timer=setTimeout(()=>controller.abort(),resolveTimeoutMs(provider,timeoutMs));
   try{
-    const res=await fetchImpl('https://api.openai.com/v1/responses',{
-      method:'POST',headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},
-      body:JSON.stringify({model,store:false,
+    // Bailian nests name/schema/strict under format.json_schema; OpenAI keeps them flat on format.
+    const format=provider==='bailian'
+      ?{type:'json_schema',json_schema:{name:'tope_practice_feedback',strict:true,schema:AI_SCHEMA}}
+      :{type:'json_schema',name:'tope_practice_feedback',strict:true,schema:AI_SCHEMA};
+    const res=await fetchImpl(`${resolvedBaseUrl}/responses`,{
+      method:'POST',headers:{'Authorization':`Bearer ${resolvedKey}`,'Content-Type':'application/json'},
+      body:JSON.stringify({model:resolvedModel,store:false,
         instructions:SYSTEM_PROMPT,
         input:JSON.stringify({request:modelRequest,practiceRubric:{version:PRACTICE_RUBRIC_VERSION,focus:focus.focus,officialBasis:officialBasisFor(request),peelIsOfficialCriterion:false},
           practiceScoreConfig:{version:scoreConfig.version,promptVersion:PROMPT_VERSION,label:scoreConfig.label,weightBasis:'product_defined_not_official',weights:scoreConfig.configuredWeights,assessedDimensions:scoreConfig.assessedDimensions,notAssessedDimensions:scoreConfig.notAssessedDimensions,descriptions:scoreConfig.descriptions,scoreAnchors:SCORE_ANCHORS,aggregateCalculation:'backend_only'},
           interactionEvidenceAvailable:hasInteractionEvidence(request),officialBands:OFFICIAL_BANDS[request.examType]}),
-        text:{format:{type:'json_schema',name:'tope_practice_feedback',strict:true,schema:AI_SCHEMA}},
-        max_output_tokens:3600}),signal:controller.signal});
+        text:{format},
+        max_output_tokens:cfg.maxOutputTokens,
+        ...(provider==='bailian'?{reasoning:{effort:'low'}}:{})}),signal:controller.signal});
     if(!res.ok) return errorResult(request,'PROVIDER_HTTP_ERROR',`模型服务暂时不可用（HTTP ${res.status}）。请重试或使用离线模式。`);
     const body=await res.json();
     if(body.status==='incomplete')return errorResult(request,'PROVIDER_INCOMPLETE','模型输出不完整，请重试。');
     let obj;
     try{obj=JSON.parse(getText(body));}
     catch(err){return errorResult(request,err.message==='PROVIDER_REFUSAL'?'PROVIDER_REFUSAL':'INVALID_MODEL_OUTPUT','模型没有返回有效的结构化反馈。');}
-    try{return normalizeAIResult(obj,request,{modelId:typeof body.model==='string'&&body.model?body.model:model});}
+    try{return normalizeAIResult(obj,request,{modelId:typeof body.model==='string'&&body.model?body.model:resolvedModel});}
     catch(err){return errorResult(request,'INVALID_MODEL_OUTPUT',`模型结果未通过评分或原文证据校验：${err.message}`);}
   }catch(err){
     const timeout=err.name==='AbortError';
