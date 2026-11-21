@@ -1,0 +1,19 @@
+{
+  "examType": "C",
+  "question": {
+    "id": "c001",
+    "text": "What do you expect from a college education?"
+  },
+  "stage": "speech",
+  "transcript": "Study groups improve learning. For example, our study group meets every Tuesday.",
+  "durationSeconds": 118,
+  "rubric": {
+    "version": "0.1.0",
+    "scale": "0-100",
+    "dimensions": [
+      "content",
+      "organization",
+      "language"
+    ]
+  }
+}

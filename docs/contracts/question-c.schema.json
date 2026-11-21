@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "title": "TOPE C question (A-compatible candidate)",
+  "type": "object",
+  "required": [
+    "id",
+    "cat",
+    "en",
+    "zh"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cat": {
+      "type": "string",
+      "minLength": 1
+    },
+    "en": {
+      "type": "string",
+      "minLength": 1
+    },
+    "zh": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "exam_recollection",
+            "classroom_sample",
+            "practice",
+            "ai_generated",
+            "unknown"
+          ]
+        },
+        "reference": {
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "verified"
+      ]
+    },
+    "followUps": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

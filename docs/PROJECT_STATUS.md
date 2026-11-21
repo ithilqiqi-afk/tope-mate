@@ -1,22 +1,30 @@
-# TOPE Mate — Shared Project Status
-Updated: 2026-11-21
+# TOPE Mate 共享状态
 
-## Repository
-Private repository: `ithilqiqi-afk/tope-mate`. Default branch: `main`. A's GitHub account `zshw0124` has read/write access. Initial remote main was `caa400f9f6edf655f9120d2eb296c39817dd959d` (only README and .gitignore).
+更新日期：2026-11-21；状态：**待同步 GitHub**（本文件来自 A 上传的本地原型，尚未合并仓库既有文件）。
 
-## Stable frontend (A, local; import pending)
-A's vanilla HTML/CSS/JS prototype passed six manual checks: B/C home, C draw, accelerated phase transitions, pause/resume and warning, sample report, B candidate cards/discussion. Local data: C=196 questions; B=22 sets. Not yet verified from GitHub. No recording, transcription or real AI evaluation in audited version.
+## 当前稳定基线
+- A 的 Qoder 原生 HTML/CSS/JS 第一阶段原型；成员 A 本地人工验收 6/6 项通过。
+- GitHub 仓库目标：`ithilqiqi-afk/tope-mate`；本次连接账号 `zsh0424` 访问返回 404，未读取或提交到远程。
+- 最近通过测试的远程 commit ID：**待首次提交及远程复验后填写**；不可填本地模拟 ID。
 
-## B modules (reported, files not yet reviewed here)
-C=139 candidate items and B=28 candidate sets; JSON/Excel, source annotations, draft scoring contract and mock evaluation. Do not treat these numbers as audited or confirmed official exam questions.
+## A 已有
+- B/C 选择、分类抽题、倒计时、阶段推进、暂停/恢复与提醒、B 三卡、示例报告。
+- C 196 道、B 22 组现有本地题目；数量不代表来源核验。
 
-## Current activities
-A: import baseline to `feature/frontend-import`, run structural and browser checks, create PR before merging to main. Then record voice per phase.
-B: develop question-bank and AI-scoring branches, supply real JSON fixtures and protocol details.
-Joint: confirm contract version and adapter tests; merge through PRs.
+## B 已报告（未收到文件验证）
+- C 139 道候选、B 28 组候选；JSON + Excel、初版来源整理、评分协议与模拟评分原型。
 
-## Risks
-B's schema and A's legacy globals differ; sample scores are not real AI evaluation; audio/voice capture not implemented; API keys must remain on server; browser microphone requires explicit testing.
+## 进行中/待办
+- A：获取仓库访问权限；迁移并远程运行复验；之后录音与按阶段采集。
+- B：提供实际 JSON/评分输出样例；来源审核；转写方案。
+- 共同：审核 `docs/contracts` 候选 v0.1，确认映射与评分语义，约定后冻结。
 
-## Working rule
-Update this file after important PRs and tested merges. Record exact commit SHA and tests. Never claim tests were run if they were not.
+## 风险
+- GitHub 账号或 App 授权不足；无法获取主分支历史。
+- A/B 题库数量和模式不同，原始内容不能直接覆盖。
+- 真实录音、转写、AI 评分均尚未在 A 原型中实现。
+- 仅本地结构测试与成员 A 人工 6 项测试；未覆盖跨浏览器麦克风。
+
+## 更新规则
+- 每次合并后更新：已完成、测试方法/结果、阻塞、下一步、最新通过测试 commit SHA。
+- 不得将尚未测试的功能标为通过；协议变更需同步 Schema、示例、测试和版本。
