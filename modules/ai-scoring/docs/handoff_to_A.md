@@ -53,5 +53,6 @@ B 模块已提供本地评分服务，详见 `http_integration.md`。
 4. 响应包裹：成功 `{success:true, data:<完整 v1.4.0 报告>, meta:{questionId, demoOnly:false}}`；失败 `{success:false, error:{code, message, retryable}}`。前端从 `data` 中取报告字段，渲染逻辑不变。
 5. 阶段名映射由 A 完成：`intro` → `self_intro`，`presentation` → `statement`；题目对象拼接为 `question` 字符串，题目编号放 `questionId`（选填，≤128 字符，仅追踪用，不参与评分，回填在 `meta.questionId`）。
 6. CORS 仅允许 `http://localhost:5173` 与 `http://127.0.0.1:5173`，支持 OPTIONS 预检。
-7. 模式：`SCORING_MODE=heuristic`（默认，无 Key，`practiceScore` 恒为 null，不产生假分数）；`SCORING_MODE=ai` 需服务端 `OPENAI_API_KEY`，缺 Key 返回 503，模型错误 502，超时 504。错误时请展示 `error.message` 并按 `retryable` 决定是否提供重试按钮。
+7. 模式：`SCORING_MODE=heuristic`（默认，无 Key，`practiceScore` 恒为 null，不产生假分数）；`SCORING_MODE=ai` 需服务端配置对应服务商 Key：`SCORING_PROVIDER=openai` 用 `OPENAI_API_KEY`；`SCORING_PROVIDER=bailian`（阿里云百炼）用 `DASHSCOPE_API_KEY`，默认模型 `qwen3.8-flash`、`reasoning.effort=low`、超时 120 秒（`SCORING_TIMEOUT_MS` 可配），详见 `http_integration.md`。缺 Key 返回 503，模型错误 502，超时 504。错误时请展示 `error.message` 并按 `retryable` 决定是否提供重试按钮。
 8. 联调样例在 `examples/http-success-heuristic.json`、`http-success-scored-demo.json`（合成 81 分演示，`meta.demoOnly:true`，UI 必须标注“演示数据”）、`http-error-empty-transcript.json`、`http-error-no-key.json`。真实接口默认不返回合成分数。
+9. **真实评分耗时提醒**：真实模型调用实测约 60 秒（服务端超时上限 120 秒）。前端 fetch 超时请设置 ≥120 秒，提交后显示“评分中”加载态并禁用重复提交；服务端不会自动重试，每次重试都是一次新的模型请求。建议先用 heuristic 模式打通 UI，再切换 ai 模式联调。

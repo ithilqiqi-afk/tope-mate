@@ -1,16 +1,27 @@
 # TOPE Mate 共享状态
 
-更新日期：2026-11-21（百炼兼容补丁对齐成员 B 的真实实测结果后）；状态：**本地联调通过；评分百炼通路已切到 B 实测通过的 `/responses` 并按 59 秒实测重排超时；ASR 权限仍未做任何真实验证；本轮未提交、未推送**。
-完整交付说明见 [`round5-bailian-patch-report.md`](round5-bailian-patch-report.md)（第 1–10 节为第五轮补丁、**第 11 节为本次补丁记录**）与 [`round5-delivery-report.md`](round5-delivery-report.md)（第五轮主体）。
+更新日期：2026-11-21（**已把 `origin/main`（含成员 B 的 PR #4）合并进 `feature/ai-integration`**）；状态：**本地合并完成、四套测试全通过；默认百炼评分通路改用 B 真实调用实测通过的 `provider.mjs`（嵌套 `json_schema` + 16384 token + `effort=low`），A 的 `bailian-provider.mjs` 降为非默认备用；ASR 权限仍未做任何真实验证；合并提交已在本地，尚未推送**。
+完整交付说明见 [`round5-bailian-patch-report.md`](round5-bailian-patch-report.md)（第 1–10 节为第五轮补丁、第 11 节为 Responses 对齐补丁、**第 12 节为合并 PR #4 后的口径更正与合并记录**）与 [`round5-delivery-report.md`](round5-delivery-report.md)（第五轮主体）。
 
 上一版状态原文（保留，不再代表当前状态）：「状态：**待同步 GitHub**（本文件来自 A 上传的本地原型，尚未合并仓库既有文件）。」
 
 ## 当前稳定基线
 - A 的 Qoder 原生 HTML/CSS/JS 第一阶段原型；成员 A 本地人工验收 6/6 项通过。
 - GitHub 仓库目标：`ithilqiqi-afk/tope-mate`；本次连接账号 `zsh0424` 访问返回 404，未读取或提交到远程。
-- 最近通过测试的远程 commit ID：**待首次提交及远程复验后填写**；不可填本地模拟 ID。
-- 第五轮基线：工作目录为**仓库根目录**（GitHub 本地克隆，路径因人而异，本文档一律用相对路径表述），分支 `feature/ai-integration`，HEAD 仍是任务书基准 `08c04cd  Merge pull request #2 from ithilqiqi-afk/feature/ai-scoring`。改动全部留在工作区（本次补丁收尾实测：**22 个已跟踪文件修改 + 16 个未跟踪条目**，未跟踪条目展开后是 31 个文件，合计 53 个改动；新增的是 `modules/ai-scoring` 的百炼 provider 与三份百炼测试（含 `bailian-responses.test.mjs`）、整个 `modules/speech-transcription/`、`services/ai-pipeline.js`、`tools/`、两份交付报告等），**没有 commit、push、PR，也没有触碰 `main`**。
-- 「最新通过测试 commit SHA」现状：自动化测试通过的是 `08c04cd + 未提交工作区`；尚不存在「包含本轮改动的已提交且已复验的 SHA」，不得填基线 SHA 冒充。
+- 最近通过测试的远程 commit ID：A 侧第五轮成果已提交并推送为 `04ffc4b`（= 合并前的 `origin/feature/ai-integration`）；**远程 CI 尚未复验**，不得把本地结果写成远程通过。
+- 第五轮基线（历史记录）：工作目录为**仓库根目录**（GitHub 本地克隆，路径因人而异，本文档一律用相对路径表述），分支 `feature/ai-integration`，当时 HEAD 是任务书基准 `08c04cd  Merge pull request #2 from ithilqiqi-afk/feature/ai-scoring`，53 个改动全部留在工作区；该批改动已提交为 `04ffc4b` 并推送。
+- 当前基线：`feature/ai-integration` = `04ffc4b` + 本地合并 `origin/main`（`94f6f04`，含成员 B 的 PR #4）。本次合并提交的两个父提交即 `04ffc4b` 与 `94f6f04`，SHA 由 `git log -1` 读取（本文档与合并提交同批落盘，故不预填 SHA）；**未推送、未开 PR、未触碰 `main`**。
+
+## 合并记录：`origin/main`（PR #4）→ `feature/ai-integration`（2026-11-21）
+- 合并前核对：分支 `feature/ai-integration`、工作区干净、HEAD `04ffc4b` 与 `origin/feature/ai-integration` 一致（A 的提交已推送）、`origin/main` = `94f6f04`（含成员 B 的百炼评分适配 PR #4）、merge-base `08c04cd`。
+- 冲突恰为预检预测的 2 个文件，**逐项解决，没有整文件 ours/theirs**：
+  - `modules/ai-scoring/src/http-server.mjs`（5 处）：导入取并集；工厂签名取并集（`apiKey` 默认按供应商分流、`bailianApiKey` 默认 `BAILIAN_API_KEY||DASHSCOPE_API_KEY||apiKey`、`timeoutMs` 去掉硬编码默认改走 `resolveTimeoutMs`）；`/health` 改为 heuristic 保持 B 的 5 键、ai 才追加 `provider/transport/timeoutMs/model`；评分分派改为「默认 responses → B 的 `scoreWithOpenAI({provider:'bailian'})`，显式 `chat` → A 的 `scoreWithBailian`」并保留 `{WorkspaceId}` 出网前 503 拦截；启动块保留 A 的校验与 4 条告警，超时改成 `resolveTimeoutMs(activeProvider)`。
+  - `modules/ai-scoring/tests/bailian-provider.test.mjs`（add/add）：**两套都保留**——B 的 15 项原样占用原文件名，A 的 14 项改名为 `tests/bailian-transport.test.mjs`（断言一条未改，只加文件头说明与 `env-isolation` 导入）。
+- D1–D4 落实：默认实现 = B 的 `provider.mjs`（D1）；A 的 `bailian-provider.mjs` 保留为备用并**只改注释、行为零改动**（D2，`git diff` 核实 17 增 11 删全部是注释行）；默认通路沿用 B 的 `PROVIDER_HTTP_ERROR` 映射（D3）；`effort=low` 由 B 固定，`BAILIAN_SCORING_REASONING_EFFORT`/`BAILIAN_ENABLE_THINKING` 已在 `.env.example` 标注**仅备用通路生效**（D4）。
+- B 的文件零改动核实：`src/provider.mjs`、`tests/env-isolation.mjs`、`tests/http-server.test.mjs`、`tests/scoring.test.mjs`、`tests/bailian-provider.test.mjs`、`docs/handoff_to_A.md`、`docs/http_integration.md`、`docs/test_report.md` 共 8 个文件与 `origin/main` **逐字节一致**。
+- A 侧保留：前端录音、百炼 ASR、评分流水线、Windows 启动脚本与全部既有测试均未因合并丢失；新增 `tests/bailian-default-routing.test.mjs`（5 项）补上「默认通路必须用 B 的报文」这一覆盖缺口。
+- 合并后实测：四套测试全通过（见下节），零 Key 实机启动 4 个临时端口全部符合预期，**未做任何真实付费调用、未推送、未开 PR**。
+- 待用户决定：是否 `git push` 本分支 / 开 PR；是否重启本机 `3001/3002` 旧进程以加载合并后的代码。
 
 ## A 已有
 - B/C 选择、分类抽题、倒计时、阶段推进、暂停/恢复与提醒、B 三卡、示例报告。
@@ -23,7 +34,7 @@
 - **第五轮百炼兼容补丁**：两个服务新增可选的阿里云百炼（华北2·北京）通路，用 `SCORING_PROVIDER` / `TRANSCRIBE_PROVIDER` 切换，默认仍是 `openai`。转写走 `chat/completions` + `input_audio` + Base64 Data URI（百炼没有 `/audio/transcriptions`，也明确不接受本地文件路径），格式白名单 `webm/ogg/wav/mp3/flac`、**不含 m4a/mp4**，`>300 秒` 返回 413 `AUDIO_TOO_LONG`、编码后 `>10 MB` 返回 413，两者都在出网前拒绝且**绝不截断**。`BAILIAN_API_KEY`/`DASHSCOPE_API_KEY` 与 `OPENAI_API_KEY` 互不回退。详见 `docs/round5-bailian-patch-report.md`。
 
 - **百炼补丁·同日追加（对齐成员 B 的真实实测）**：
-  1. **评分默认接口改为 `/responses`**（`BAILIAN_SCORING_TRANSPORT` 默认 `responses`，`chat` 保留为可切换备用通路）。报文逐字段镜像 B 实测通过 / 仓库 OpenAI 通路已有的形态：`store:false`、`instructions`、`input` 字符串、嵌套 `text.format.json_schema{strict:true}`、`max_output_tokens:3600`；`reasoning.effort` 仅在显式配置时下发（`qwen3.8-flash` 默认 `xhigh`，正是 59 秒耗时的来源）。
+  1. **评分默认接口改为 `/responses`**（`BAILIAN_SCORING_TRANSPORT` 默认 `responses`，`chat` 保留为可切换备用通路），两条通路都发 `store:false`、`instructions`、`input` 字符串。**当时这段对报文形状的描述有误，合并 PR #4 后已更正**：A 的 `bailian-provider.mjs` 用的是**扁平** `text.format{type,name,strict,schema}` + `max_output_tokens:3600` + 默认不下发 `reasoning`；B 真实调用实测通过的是**嵌套** `text.format.json_schema{strict:true}` + `max_output_tokens:16384` + 固定 `reasoning.effort=low`。59.09 秒是 B 那次调用（`effort=low`）的耗时，**不是 `xhigh` 档造成的**。合并后默认通路直接走 B 的 `provider.mjs`，A 的实现降为显式 `chat` 才用的备用通路（见下方「合并记录」与补丁报告第 12 节）。
   2. **`BAILIAN_BASE_URL` 不再需要 `{WorkspaceId}`**：默认内置 `https://dashscope.aliyuncs.com/compatible-mode/v1`（B 实测通过的地址），用户留空即可；转写同 host，只是拼成 `/chat/completions`。评分与转写**没有强行统一接口**——两条通路分别对应官方两套 OpenAI 兼容端点。
   3. **超时链路按实测重排**：评分服务端 45000→120000 ms、前端 60000→150000 ms；转写服务端 60000→90000 ms、前端 75000→120000 ms；保持「服务端 < 前端」，否则浏览器只留下静默 `timeout` 而拿不到后端错误码。`/health` 现上报 `transport` 与 `timeoutMs`，启动时若 `SCORING_TIMEOUT_MS<60000` 会告警。
   4. **`tools/asr-smoke.mjs`（新增，零依赖）**：为「这把 Key 到底能不能调 `qwen3-asr-flash`」准备的最小真实调用脚本，只发一次 2 秒本机生成静音 wav（≈0.00044 元）、不读 Key、不重试、`--dry-run` 完全离线。**本方未执行真实调用，等用户批准**。
@@ -39,25 +50,25 @@
 - 共同：评分协议已冻结为 Schema 1.4.0（`docs/contracts/README.md` 记录了 v0.1 候选的废弃映射表）；转写接口见 `modules/speech-transcription/docs/transcribe_api.md`。
 - 第五轮后待办（按优先级，2026-11-21 补丁后重排）：
   1. **`qwen3-asr-flash` 的第一次真实 ASR 调用**：`node tools/asr-smoke.mjs --dry-run` 已验（零网络），真实那一次约 0.00044 元、2 秒静音，**等用户明确批准**才执行；若返回 `PROVIDER_MODEL_UNAVAILABLE`/`PROVIDER_AUTH_ERROR`，说明这把 Key 的业务空间没开通 ASR，需要控制台处理，不要换地域。步骤与错误码对照见 `docs/round5-bailian-patch-report.md` 第 9.5 节。
-  2. **无 Key 离线测试已完成**（100 + 61 模块测试、27 组前端断言、结构校验、3901/3902/3903 零 Key 实机）；真人浏览器验收仍待：Chrome/Edge 录音 → 转写 → 评分 → 报告全流程，`{WorkspaceId}` 现在不需要填。
-  3. **不要重复真实付费评分调用**：B 已验过一次；本地 `3001` 若仍是旧进程需先重启才能拿到 `transport:"responses"`。合并顺序建议：B 先同步他的评分代码 → 跑三通路 parity 测试 → 再一起 commit（避免我在冲突里覆盖 B 的实现）。
-  4. 与 B 对齐 `unassessed` 语义：`modules/ai-scoring/examples/http-success-scored-demo.json` 把已有分数的维度也列为未评估，前端已改为按打分表推导并在冲突时显式提示。
+  2. **无 Key 离线测试已完成并在合并后复跑**（ai-scoring **120** + 转写 **61** 模块测试、27 组前端断言、结构校验、`3011/3012/3013/3014` 零 Key 实机）；真人浏览器验收仍待：Chrome/Edge 录音 → 转写 → 评分 → 报告全流程，`{WorkspaceId}` 现在不需要填。
+  3. **不要重复真实付费评分调用**：B 已验过一次。**合并已完成**（B 的 PR #4 已进 `main`，并已合入本分支，B 的 8 个文件逐字节未改）；本地 `3001/3002` 上仍是合并前启动的旧进程，**需要用户自行重启**（关掉旧窗口再双击 `启动 AI 后端.bat`）才能拿到合并后的默认通路，AI 不代关进程。
+  4. 与 B 对齐 `unassessed` 语义：**运行时已由 B 在 PR #4 修复**（`normalizeAIResult` 现在过滤掉「已有分数的维度」，并有专测钉住）；但静态样例 `modules/ai-scoring/examples/http-success-scored-demo.json` 仍是旧形状（把 6 个已打分维度也列进 `unassessed`），该文件属 B、本轮未改。前端继续按打分表推导并在冲突时显式提示。
   5. 题库来源核验（196 + 22 的数量不等于出处已核实）。
   6. 在本机用与 CI 相同的 Node 22 复跑四套测试后再考虑合并。
   7. 黑客松「演示链接」形式确认后再决定是否部署；确认前保持零部署，任何公网托管或付费调用都要先取得用户批准（见 `round5-delivery-report.md` 第 9 节）。
   8. 真人双击两个启动器各看一次屏幕：`启动 AI 后端.bat` 的两个窗口是否出现 listening 行、`停止 AI 后端.bat` 里手敲 `Y` 是否真的结束服务（自动化通道无法代替键盘输入，见第 10.5 节）。
 
 ## 测试方法与结果
-- 自动化测试（本机 Windows 11 / Node **v26.13.1**，全程离线、无真实 API Key、无浏览器、无付费调用；数字为**本次 Responses 对齐补丁后**复跑结果，`npm test` 与 `node --test` 口径一致）：
+- 自动化测试（本机 Windows 11 / Node **v26.13.1**，全程离线、无真实 API Key、无浏览器、无付费调用；数字为**合并 `origin/main`（PR #4）之后**的复跑结果，`npm test` 与 `node --test` 口径一致）：
   - `node tests/validate.cjs` → PASS（C=196、B=22、categories=5、阶段配置与 Schema 1.4.0 契约样例），失败 0。
   - `node tests/frontend-services.cjs` → 转写 10 项、评分 7 组、流水线 10 组全通过，失败 0。
-  - `cd modules/ai-scoring && npm test` → **100 tests / 100 pass / 0 fail / 0 skipped**（既有 58 + 第五轮 24 + 本轮 responses 专测 18）。
+  - `cd modules/ai-scoring && npm test` → **120 tests / 120 pass / 0 fail / 0 skipped**。构成：B 侧原样 73（`scoring` 31 + `http-server` 17 + `official_rating` 10 + PR #4 新增 `bailian-provider` 15，与 B 报回的 73/73 一致）+ A 侧 42（`bailian-http` 10 + `bailian-responses` 18 + `bailian-transport` 14，后者是 A 原 `bailian-provider.test.mjs` 改名保留，断言一条未改）+ **本次合并新增 `bailian-default-routing` 5**（钉住 HTTP 层默认选路到 B 的报文、思考参数只作用备用通路、错误映射与超时钳制）。
   - `cd modules/speech-transcription && npm test` → **61 tests / 61 pass / 0 fail / 0 skipped**（既有 29 + 第五轮 29 + 本轮默认 Base URL 专测 3）。
-  - 启动实测（本轮改用环境变量直接起模块入口，端口 `3901/3902/3903`，不占用也不触碰用户的 `3001/3002/5173`，验完逐个关闭、端口已释放）：
-    - listening 行如实打印 transport 与生效超时：`SCORING_TIMEOUT_MS=20000` 时是 `provider=bailian, transport=responses, timeout=20000ms` 并伴随「小于实测约 59 秒」告警；不设该变量时是 `timeout=120000ms`（3903 实测）。
-    - `/health` 上报 `transport`、`timeoutMs`、`maxAudioBytes:7863552`、`maxAudioSeconds:300` 与 5 项格式白名单；`aiKeyConfigured/keyConfigured` 均为 `false`。
-    - 零 Key：`/api/evaluate`、`/api/transcribe` 均 503 `API_KEY_MISSING`（转写消息点名 `BAILIAN_API_KEY`/`DASHSCOPE_API_KEY`）；伪造 Key + `{WorkspaceId}` 占位符地址：503 `PROVIDER_CONFIG_ERROR`；**供应商侧外部请求 0 次**。
-    - `node tools/asr-smoke.mjs --dry-run` 退出码 0、零网络；`--url http://127.0.0.1:3902`（零 Key）退出码 1、503 `API_KEY_MISSING`，并先打印服务端生效配置。
+  - 启动实测（合并后重跑：用环境变量直接起模块入口，端口 `3011/3012/3013/3014`，不占用也不触碰用户的 `3001/3002/5173`，验完逐个关闭并用 `netstat` 确认端口已释放）：
+    - `SCORING_MODE=ai SCORING_PROVIDER=bailian` 零 Key：listening 行为 `provider=bailian, transport=responses, timeout=120000ms`，并打印「未配置 BAILIAN_API_KEY 或 DASHSCOPE_API_KEY」告警；另起一份 `SCORING_TIMEOUT_MS=30000` 时 listening 行如实变成 `timeout=30000ms` 并伴随「小于实测约 59 秒」告警（3014 实测）。
+    - `/health`：ai 模式追加 `provider/transport/timeoutMs/model`（`qwen3.8-flash`）且 `aiKeyConfigured:false`；heuristic 模式保持 B 钉住的 5 键形状（3012 实测）；转写 bailian 通路上报 `model:"qwen3-asr-flash"`、`timeoutMs:90000`、`maxAudioBytes:7863552`、`maxAudioSeconds:300` 与 5 项格式白名单、`keyConfigured:false`（3013 实测）。
+    - 零 Key：`POST /api/evaluate` 返回 **503 `API_KEY_MISSING`**（3011 实测）；heuristic 模式同一份 fixture 返回 **200**、`schemaVersion:"1.4.0"`、`practiceScore:null`、`officialAssessment.level:null`、`scoreStatus:"not_scored"`（3012 实测，不伪造分数）；`{WorkspaceId}` 占位符地址的 503 `PROVIDER_CONFIG_ERROR` 与「只配 OpenAI Key 时零次出网」由自动化测试覆盖；**供应商侧外部请求 0 次**。
+    - `node tools/asr-smoke.mjs --dry-run` 在上一轮已验（退出码 0、零网络），**本轮未重复执行，也未做任何真实调用**。
     - 仓库内没有 `.env` 实体文件（本轮通过环境变量注入，用完即失效）；全仓 `sk-` 形态密钥串 0 处；无 vercel/netlify/render/railway/Docker 配置；CI 仅 `validate.yml` 且无 deploy/publish 步骤。
 - 第五轮人工验收：真实浏览器（假麦克风 + 本机 3001/3002 真实服务）走完缺 Key 诚实失败、手打文本→离线启发式、`complete:false` 拦截与显式允许、停止在途请求、HTML/脚本注入转义、B 三阶段请求字段与 `interaction:null`、确认框文案。**真实 API 调用与真人权限弹窗未由本方验证**，逐项清单与状态标注见 `docs/round5-delivery-report.md` 第 5 节。
 - 分层结论：以上只证明**第 1 层（离线）与本地联调通过**。评分百炼通路的报文形状已对齐**成员 B 的一次真实调用结果**（该真实验证由 B 完成，本方未复现，不能写作本方通过）；**ASR 通路至今零真实调用**，`qwen3-asr-flash` 的 Key 权限是唯一还悬空的项。
@@ -74,8 +85,9 @@
   - 录音时长可能长于计划阶段时长，尾音会一起转写。
   - `停止 AI 后端.bat` 会结束占用 3001/3002 的 Node 进程，已加进程号列出 + 输入 `Y` 确认 + `node.exe` 镜像名校验，但仍需人工核对 PID。
   - Safari / Firefox 的 `MediaRecorder` 行为未验证。**百炼补丁把这个风险具体化了**：`qwen3-asr-flash` 的官方格式表不含 m4a/mp4/mov，Safari 录音在 bailian 通路上会返回 415；官方替代模型 `qwen-audio-3.1-asr-flash` 只走 DashScope 原生协议，本轮未实现。本地演示请固定用 Chrome 或 Edge。
-  - 百炼通路特有的未确认项（补丁后收窄）：~~`{WorkspaceId}` 真实值~~ 已不再需要（默认地址由 B 实测通过）、~~`{type:"null"}` 能否被 `strict:true` 接受~~ 已在 responses 通路上被 B 的成功调用间接证实。仍然悬空的是：**这把 Key 的业务空间是否开通 `qwen3-asr-flash`**（唯一必须真实调用或控制台确认的项）；思考档位 `xhigh→低档` 对评分质量的影响；chat 备用通路从未真实验证；真实 401/403/429 失败形态仍只有离线模拟。
-  - **两份 responses 报文实现并存**：B 的 `modules/ai-scoring/src/provider.mjs`（打 OpenAI）与 `src/bailian-provider.mjs`（打百炼）形状相同、各写一份，存在漂移风险。判定标准是三通路 `deepEqual` parity 测试；B 的代码同步进来后应以 B 为准，必要时抽出公共构造函数、删掉百炼文件里的重复分支。
+  - 百炼通路特有的未确认项（合并后收窄）：~~`{WorkspaceId}` 真实值~~ 已不再需要（默认地址由 B 实测通过）、~~`{type:"null"}` 能否被 `strict:true` 接受~~ 已在 responses 通路上被 B 的成功调用间接证实。仍然悬空的是：**这把 Key 的业务空间是否开通 `qwen3-asr-flash`**（唯一必须真实调用或控制台确认的项）；默认通路已固定 `reasoning.effort=low`，但 low 档相对模型默认档的**评分质量差异未做对照验收**；chat 备用通路从未真实验证；真实 401/403/429 失败形态仍只有离线模拟。
+  - **两份百炼实现并存（合并后已定主次）**：默认通路 = B 的 `provider.mjs`（`provider:'bailian'` 分支：嵌套 `json_schema` + 16384 token + `effort=low`，唯一做过真实调用验证的实现）；`src/bailian-provider.mjs` = A 的**非默认备用实现**，只在显式 `BAILIAN_SCORING_TRANSPORT=chat` 时被调用，它的 responses 分支已不在默认路径上。漂移风险由新增的 `tests/bailian-default-routing.test.mjs`（HTTP 层选路 + 报文形状 + 错误映射 + 超时钳制）与三通路 `deepEqual` parity 测试共同钉住。**后续若要彻底消除重复，应删掉备用文件里的 responses 分支，而不是改 B 的核心**；该清理需用户批准后再做。
+  - **同一 HTTP 状态在两条通路上错误码不同（合并后的既有差异，未擅自统一）**：默认 responses 沿用 B 的处理，401/403/404/500 一律 502 `PROVIDER_HTTP_ERROR`（`retryable:true`）；备用 chat 才细分 503 `PROVIDER_AUTH_ERROR` 与 502 `PROVIDER_MODEL_UNAVAILABLE`（`retryable:false`）。前端按后端 `error.retryable` 决定是否给重试按钮，因此默认通路上「Key 无效」也会显示为可重试的供应商故障——这是 D3「不改 B 已冻结代码」的直接结果，已如实记录，不偷偷改写。
   - **59 秒实测贴着 120 秒服务端上限**：约一倍余量，百炼排队或档位上调仍可能 504；改超时必须「服务端 < 前端」两端同步（120000/150000、90000/120000 已写进注释与 `.env.example`）。
   - B 侧讨论 3 分钟贴着 ASR 的 5 分钟上限：阶段延长或尾音会触发 413 `AUDIO_TOO_LONG`（明确报错、不截断），需要更长录音时要另做分段提交方案。
   - 端口 `3001/3002` 上如果还挂着本轮改动之前启动的旧进程，百炼配置不会生效；需要关掉旧窗口再双击 `启动 AI 后端.bat`（AI 不会代关，避免误杀无关进程）。

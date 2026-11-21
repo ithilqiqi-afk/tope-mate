@@ -2,6 +2,7 @@
    重点验证：外部接口 POST /api/evaluate 与 GET /health 未变，
    Schema 1.4.0 信封字段完整，错误码映射成正确的 HTTP 状态，
    以及 OpenAI 密钥绝不被发给阿里云、响应里不出现密钥或业务空间地址。 */
+import './env-isolation.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';

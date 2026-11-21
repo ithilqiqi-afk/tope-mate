@@ -1,6 +1,6 @@
 # TOPE Mate B AI 评分模块 v0.6.0 自动测试报告
 
-**本轮测试结果：58/58 通过，0 失败。**（原评分模块测试 41 项 + HTTP 集成测试 17 项）
+**本轮测试结果：73/73 通过，0 失败。**（原评分模块测试 41 项 + HTTP 集成测试 17 项 + 百炼适配测试 15 项）
 
 ## 测试环境与执行方式
 
@@ -52,6 +52,18 @@ demo 输出 `mode: heuristic`、`practiceScore: null`、`schemaVersion: 1.4.0`�
 - 错误响应不泄露密钥、内部异常堆栈或请求转写数据。
 - examples/ 四个固定联调样例为有效 JSON，heuristic 样例分数为 null，scored-demo 样例 `demoOnly: true` 且含非官方免责声明。
 
+## 百炼适配与超时治理测试覆盖（tests/bailian-provider.test.mjs，15 项，全部本地 fake fetch）
+
+- 百炼请求指向北京 compatible-mode `/responses` 端点，使用嵌套式 `text.format.json_schema`，并发送 `reasoning:{effort:'low'}`；OpenAI 路径保持平铺格式、3600 token 上限，且不发送 `reasoning` 参数。
+- `BAILIAN_MODEL` / `BAILIAN_BASE_URL` 环境变量覆盖与末尾斜杠归一化；`DASHSCOPE_API_KEY` / `SCORING_PROVIDER` 环境解析，输出不泄露密钥；缺 Key 返回 `API_KEY_MISSING` 且零网络调用。
+- 含 reasoning 输出项的响应经 message `output_text` 正确解析，证据逐字校验不变；incomplete 与虚构引用一律 fail-closed。
+- **默认超时：bailian 120 秒、openai 保持 45 秒；`SCORING_TIMEOUT_MS` 可覆盖，钳制 1000–120000ms，非法值回退服务商默认；显式 `timeoutMs` 优先于环境变量。**
+- **超时真实中止行为：fake fetch 挂起直至 AbortSignal 触发，按配置时延返回 `PROVIDER_TIMEOUT`，模型调用次数恰为 1（HTTP 层同样验证）。**
+- **无自动重试回归：openai 与 bailian 两条路径在 HTTP 500 下均只调用模型 1 次，不产生分数。**
+- **timeManagement 一致性回归：后端已计时的维度不得再出现在 `unassessed`；未提供目标时长时仍保留在未评估列表。修复仅为 normalizeAIResult 的一行过滤，不改 Schema、权重或评分算法语义。**
+- HTTP 层 bailian 模式 503 / 422 优先级 / 200 完整报告，`questionId` 不进入模型输入；health 结构不变。
+- 测试环境隔离（tests/env-isolation.mjs）：测试启动时清除本机可能携带的真实服务商环境变量（SCORING_PROVIDER、BAILIAN_BASE_URL、密钥等），保证在已配置真实环境的开发机与干净 CI 上结果一致；需要环境值的测试用 withEnv 显式设置并还原。
+
 ## 错误优先级约定（/api/evaluate）
 
 请求 JSON 解析与字段校验通过后依次判断：
@@ -67,4 +79,4 @@ demo 输出 `mode: heuristic`、`practiceScore: null`、`schemaVersion: 1.4.0`�
 
 ## 未完成的验证
 
-本轮没有配置 API Key，没有调用任何真实付费模型（HTTP 测试中的 AI 路径全部使用本地 fake fetch），也没有进行真人考官对照。因此不能据此宣称真实模型评分准确、稳定，或分数与人大官方等级存在统计对应关系。后续需用同一模型和提示词，对高/中/低回答进行盲评复核，并收集多次重复评分结果，校准分数稳定性。GitHub Actions 远程执行结果需在推送后另行确认。
+2026-11-21 经用户批准共执行过**两次**真实百炼调用（qwen3.8-flash）。第一次（个人免费额度，默认思考强度）：本地 45 秒超时返回 504 `PROVIDER_TIMEOUT`；百炼侧审计日志确认该请求实际完成（HTTP 200，模型耗时 118.94 秒，首 Token 1.01 秒，总 Token 9791，输出约 7740），即本地提前中止、未收到报告。据此将百炼路径调整为 `reasoning.effort=low` + 默认 120 秒可配置超时。第二次（主办方团队 Key，effort=low）：**HTTP 200，响应 59.09 秒**，返回完整 v1.4.0 报告：practiceScore 81、scoreStatus complete、覆盖率 100%、6/6 维度反馈完整、全部证据逐字校验通过、`officialAssessment.level=null`、无发音/语调/官方等级评价。除这两次经批准的调用外，其余测试均为本地 fake fetch，不产生付费请求。尚需用同一模型和提示词对高/中/低回答进行盲评复核并收集重复评分结果，校准分数稳定性；不能据此宣称真实模型评分准确、稳定，或分数与人大官方等级存在统计对应关系。GitHub Actions 远程执行结果需在推送后另行确认。

@@ -4,6 +4,7 @@
    ②只换传输层：同一份模型输出经 responses / chat / OpenAI 三条通路必须得到完全相同的 1.4.0 报告；
    ③原文证据校验与无法评估维度处理没有因为换接口而放松；
    ④无 Key、占位符地址、鉴权失败、模型不可用、超时断网、输出截断都在出网前后如实报错，不产生分数。 */
+import './env-isolation.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -94,11 +95,11 @@ test('Responses 地址解析：默认地址免业务空间 ID，chat 地址也�
   assert.throws(()=>bailianResponsesUrl('http://llm-placeholder.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'),/https/);
 });
 
-test('默认报文与成员 B 实测形态一致：/responses + store:false + instructions + 扁平 json_schema',async()=>{
+test('备用实现的 responses 分支报文：/responses + store:false + instructions + 扁平 json_schema（线上默认已改用 B 的嵌套报文）',async()=>{
   const rec=recorder();
   await scoreWithBailian(high,{...OPT,fetchImpl:rec.fn(respAnswer(cannedAi(high)))});
   assert.equal(rec.calls.length,1);
-  assert.equal(rec.calls[0].url,RESPONSES_URL,'仓库默认接口必须是实测通过的 responses，而不是上一轮的 chat/completions。');
+  assert.equal(rec.calls[0].url,RESPONSES_URL,'备用 responses 分支必须打 /responses，而不是上一轮的 chat/completions。');
   const body=rec.calls[0].body;
   assert.equal(body.model,DEFAULT_BAILIAN_MODEL);
   assert.equal(body.store,false,'官方默认 store=true 会保存会话；本项目绝不上传可回看的转写原文。');
@@ -217,7 +218,7 @@ test('超时、断网与没有 fetch 的环境各自归入明确错误；无 Key
   assert.equal(badTransport.calls.length,0);
 });
 
-test('思考强度默认不下发（保持 B 实测的模型默认档位），显式配置才发送 reasoning.effort',async()=>{
+test('备用通路思考强度默认不下发（模型默认 xhigh），显式配置才发送 reasoning.effort；线上默认通路由 B 固定 effort=low',async()=>{
   const plain=recorder();
   await scoreWithBailian(high,{...OPT,fetchImpl:plain.fn(respAnswer(cannedAi(high)))});
   assert.equal('reasoning' in plain.calls[0].body,false);
@@ -243,7 +244,7 @@ test('GET /health 如实报告生效的接口与超时，不泄露密钥与主�
     const body=JSON.parse(text);
     assert.equal(res.status,200);
     assert.equal(body.data.provider,'bailian');
-    assert.equal(body.data.transport,'responses','默认必须是实测通过的接口。');
+    assert.equal(body.data.transport,'responses','默认接口名必须是 responses，由 B 实测通过的实现处理。');
     assert.equal(body.data.model,DEFAULT_BAILIAN_MODEL);
     assert.equal(body.data.timeoutMs,120000,'真实评分实测 59.09 秒，服务端超时不能再是旧的 45 秒。');
     assert.equal(body.data.aiKeyConfigured,true);

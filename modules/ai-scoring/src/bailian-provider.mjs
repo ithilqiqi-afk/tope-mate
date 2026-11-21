@@ -1,18 +1,23 @@
-// 阿里云百炼（Model Studio）OpenAI 兼容通路：评分默认走 Responses API，Chat Completions 作为可切换备用。
+// 阿里云百炼（Model Studio）OpenAI 兼容通路的【非默认备用实现】。
+// 默认评分通路是 provider.mjs 中成员 B 2026-11-21 真实调用实测通过的 Responses 实现
+// （嵌套 text.format.json_schema、max_output_tokens=16384、reasoning.effort=low）。
+// http-server.mjs 只在显式 BAILIAN_SCORING_TRANSPORT=chat 时调用本文件的 scoreWithBailian，
+// 该 chat 通路从未做过真实调用验证；本文件的 responses 分支只是历史实现与单测对照，不再是线上默认路径。
+// B 的评分核心（算法、权重、Schema 1.4.0、原文证据校验）已冻结，本文件不覆盖也不修改它。
 // 评分算法、权重与原文证据校验全部复用 provider.mjs 的 normalizeAIResult，本文件只负责传输层与报文解析。
 // 文档依据（2026-11-21 核实，help.aliyun.com/zh/model-studio/）：
 //   qwen-api-via-openai-responses（创建响应）：
 //     POST https://dashscope.aliyuncs.com/compatible-mode/v1/responses            ← 成员 B 2026-11-21 真实调用实测通过
 //     POST https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/responses（官方推荐的北京业务空间专属域名）
-//     支持模型含 qwen3.8-flash；结构化输出用 text.format（type=json_schema + strict + schema），
+//     支持模型含 qwen3.8-flash；结构化输出用 text.format，官方参数表把 schema 写在 text.format.json_schema 里，
 //     store 默认 true（会保存会话响应），本项目显式传 false；未列出的 OpenAI 参数会被忽略。
-//     注意：官方参数表把 schema 写在 text.format.json_schema 里，而成员 B 实测通过的是
-//     与 OpenAI Responses 一致的扁平写法（type/name/strict/schema 同级）。本文件按实测报文走，
-//     B 的最新评分代码同步进来后以其为准，必要时删除本文件的 responses 分支。
+//     注意：B 实测通过的默认实现用的正是官方嵌套写法 json_schema{name,strict,schema}；
+//     本文件 responses 分支用的是扁平写法（type/name/strict/schema 同级），与 B 的报文不同，不得当作默认实现。
 //   qwen-api-via-openai-chat-completions：
 //     POST {base}/chat/completions，结构化输出用 response_format.type=json_schema，且开启时不得设置 max_tokens。
 //   qwen-structured-output：JSON Schema 模式支持 Qwen3.8-Flash 系列。
-// 两条通路都不写 max_tokens/max_output_tokens，长度截断分别由 finish_reason:"length" 与 status:"incomplete" 拦截。
+// chat 通路不写 max_tokens，截断由 finish_reason:"length" 拦截；本文件 responses 分支写
+// max_output_tokens=BAILIAN_MAX_OUTPUT_TOKENS，截断由 status:"incomplete" 拦截。两者都绝不交半份分数。
 import {validateRequest,blankResult,hasInteractionEvidence} from './contract.mjs';
 import {rubricFor,officialBasisFor,PRACTICE_RUBRIC_VERSION} from './rubrics.mjs';
 import {AI_SCHEMA} from './ai-schema.mjs';
@@ -31,13 +36,14 @@ export const DEFAULT_BAILIAN_MODEL='qwen3.8-flash';
 export const DEFAULT_BAILIAN_BASE_URL='https://dashscope.aliyuncs.com/compatible-mode/v1';
 export const BAILIAN_SCHEMA_NAME='tope_practice_feedback';
 export const WORKSPACE_ID_PLACEHOLDER='{WorkspaceId}';
-/** responses = 成员 B 实测通过的接口；chat = 上一轮实现的备用接口。 */
+/** responses = 默认接口名，默认由 provider.mjs 的 B 实测实现处理；chat = 本文件的备用接口。 */
 export const BAILIAN_TRANSPORTS=Object.freeze(['responses','chat']);
 export const DEFAULT_BAILIAN_TRANSPORT='responses';
-/** 官方 reasoning.effort 对 qwen3.8-flash 支持的档位；留空即不发送该参数，保持模型默认（xhigh）。 */
+/** 官方 reasoning.effort 对 qwen3.8-flash 支持的档位；仅本备用通路读取，留空即不发送（模型默认 xhigh）。默认 responses 通路由 B 的实现固定 effort=low。 */
 export const REASONING_EFFORTS=Object.freeze(['none','low','medium','high','xhigh']);
 /**
- * 与 provider.mjs 的 OpenAI Responses 请求同值，成员 B 2026-11-21 实测这份报文能在 59.09 秒内返回完整报告。
+ * 本文件 responses 备用分支的输出上限，与 B 默认实现的 16384 不同；
+ * 成员 B 2026-11-21 在 59.09 秒内拿到完整报告用的是 B 的报文，不是这一份。
  * 官方：达到上限时生成提前停止、status=incomplete，本通路把它拦成 PROVIDER_INCOMPLETE，绝不交半份分数。
  */
 export const BAILIAN_MAX_OUTPUT_TOKENS=3600;
@@ -144,11 +150,11 @@ export async function scoreWithBailian(request,{
     ? {model,stream:false,enable_thinking:enableThinking===true,
        messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:input}],
        response_format:{type:'json_schema',json_schema:{name:BAILIAN_SCHEMA_NAME,strict:true,schema:AI_SCHEMA}}}
-    // 与 provider.mjs 发给 OpenAI Responses 的报文逐字段同构，只换 URL：成员 B 用这份报文实测拿到完整 1.4.0 报告。
+    // 备用 responses 报文：扁平 text.format + 3600 token，与 B 默认实现（嵌套 json_schema + 16384 + effort=low）不同，未经真实调用验证。
     : {model,stream:false,store:false,instructions:SYSTEM_PROMPT,input,
        text:{format:{type:'json_schema',name:BAILIAN_SCHEMA_NAME,strict:true,schema:AI_SCHEMA}},
        max_output_tokens:BAILIAN_MAX_OUTPUT_TOKENS};
-  // 官方：Responses 用 reasoning.effort 控制思考强度；不发送该参数即模型默认（qwen3.8-flash 为 xhigh）。
+  // 官方：Responses 用 reasoning.effort 控制思考强度；本备用通路不发送该参数即模型默认（qwen3.8-flash 为 xhigh）。
   if(activeTransport==='responses'&&reasoningEffort)body.reasoning={effort:reasoningEffort};
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),Math.max(1000,Math.min(timeoutMs,300000)));
