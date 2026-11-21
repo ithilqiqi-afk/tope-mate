@@ -87,6 +87,8 @@ export function createScoringServer({mode='heuristic',apiKey=process.env.OPENAI_
         try{validateRequest(request);}
         catch(err){return sendError(req,res,422,'INVALID_FIELD',err instanceof TypeError||err instanceof RangeError?err.message:'请求字段无效。');}
         const questionId=typeof request.questionId==='string'?request.questionId:null;
+        // Error priority: empty transcript (422) outranks missing API key (503); never call the model for empty input.
+        if(!request.transcript.trim()) return sendScoringError(req,res,'EMPTY_TRANSCRIPT');
         if(mode==='ai' && !apiKey) return sendScoringError(req,res,'API_KEY_MISSING');
         const result=mode==='ai'
           ? await scoreWithOpenAI(request,{apiKey,model,fetchImpl,timeoutMs})

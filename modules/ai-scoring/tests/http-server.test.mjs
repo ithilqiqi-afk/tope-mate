@@ -114,6 +114,22 @@ test('AI mode without API key returns 503 API_KEY_MISSING and never fabricates a
   });
 });
 
+test('Empty transcript outranks missing API key: 422 EMPTY_TRANSCRIPT with zero model calls',async()=>{
+  for(const transcript of ['','   ']){
+    let calls=0;
+    const countingFetch=async()=>{calls++;throw new Error('model must not be called');};
+    await withServer({mode:'ai',apiKey:'',fetchImpl:countingFetch},async base=>{
+      const res=await post(base,{...high,transcript});
+      assert.equal(res.status,422);
+      const body=await res.json();
+      assert.equal(body.success,false);
+      assert.equal(body.error.code,'EMPTY_TRANSCRIPT');
+      assert.equal(body.data,undefined);
+    });
+    assert.equal(calls,0);
+  }
+});
+
 test('questionId is validated, echoed in meta and never sent to the model',async()=>{
   await withServer({mode:'heuristic'},async base=>{
     for(const questionId of ['','x'.repeat(129),42]){
