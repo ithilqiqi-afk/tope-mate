@@ -11,7 +11,7 @@
     "serve": "node src/http-server.mjs",
     "start": "node src/http-server.mjs",
     "health": "node -e \"fetch('http://127.0.0.1:'+(process.env.PORT||3002)+'/health').then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2))).catch(e=>{console.error('健康检查失败：'+e.message);process.exit(1)})\"",
-    "test": "node --test tests/"
+    "test": "node --test tests/*.test.mjs"
   },
   "license": "UNLICENSED"
 }
