@@ -64,4 +64,4 @@
 2. 评分请求/响应的实际代码与示例，分数范围、维度权重、错误码及 null 处理，是否区分 B/C 和阶段。
 3. 转写接入方案、支持的音频 MIME/大小限制及服务端密钥管理。
 
-在 B 的真实文件可用、双方共同批准之前，`docs/contracts` 的内容均标记为**候选 v0.1，不代表冻结协议**。
+第 2、3 项已由 B 提供实际源码与样例：评分契约冻结在 Schema 1.4.0（`modules/ai-scoring/docs/api_contract.md`），转写契约见 `modules/speech-transcription/docs/transcribe_api.md`。本文写作时 `docs/contracts` 的**候选 v0.1 已废弃**，其中记录的字段差异保留在 `docs/contracts/README.md` 的映射表里，仅供理解历史代码用。第 1 项的题库出处与认证状态仍待审核。

@@ -155,3 +155,16 @@ vite.config.ts.timestamp-*
 .nx/cache
 .nx/workspace-data
 .nx/migrate-runs
+
+# TOPE Mate：录音只在本机内存里，导出/临时的音频文件不要进仓库
+*.webm
+*.wav
+*.m4a
+*.ogg
+*.mp3
+*.flac
+*.opus
+*.aac
+# mp4/mov 是 Safari 录音的容器格式（百炼 ASR 通路不支持），同样不进仓库
+*.mp4
+*.mov

@@ -1,0 +1,17 @@
+{
+  "name": "tope-mate-speech-transcription",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TOPE Mate 本地语音转写服务：把浏览器录音转成文本，供 AI 评分使用。零第三方依赖，只监听 127.0.0.1。",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "serve": "node src/http-server.mjs",
+    "start": "node src/http-server.mjs",
+    "health": "node -e \"fetch('http://127.0.0.1:'+(process.env.PORT||3002)+'/health').then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2))).catch(e=>{console.error('健康检查失败：'+e.message);process.exit(1)})\"",
+    "test": "node --test tests/"
+  },
+  "license": "UNLICENSED"
+}

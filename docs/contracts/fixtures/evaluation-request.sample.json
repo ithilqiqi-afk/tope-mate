@@ -1,19 +1,10 @@
 {
   "examType": "C",
-  "question": {
-    "id": "c001",
-    "text": "What do you expect from a college education?"
-  },
   "stage": "speech",
-  "transcript": "Study groups improve learning. For example, our study group meets every Tuesday.",
-  "durationSeconds": 118,
-  "rubric": {
-    "version": "0.1.0",
-    "scale": "0-100",
-    "dimensions": [
-      "content",
-      "organization",
-      "language"
-    ]
-  }
+  "question": "Some people think universities should require students to do volunteer work, while others believe participation should be optional. Which view do you agree with, and why?",
+  "questionId": "c-speech-001",
+  "transcript": "I believe universities should encourage volunteer work, while keeping participation voluntary. First, volunteering helps students turn knowledge into practical skills, because they must explain ideas to people with different backgrounds. For example, last semester I helped younger students with reading at a community centre near my campus. That experience also showed me the limits of my own patience. In conclusion, I support volunteer opportunities that connect study with real life, as long as students can choose how much time to give.",
+  "durationSeconds": 176,
+  "targetDurationSeconds": 180,
+  "rubric": "ruc_tope_official_bands_v1"
 }

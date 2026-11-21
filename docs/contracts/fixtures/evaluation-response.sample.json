@@ -1,45 +1,221 @@
 {
   "success": true,
-  "version": "0.1.0",
-  "scores": {
-    "overall": 78,
-    "dimensions": {
-      "content": 80,
+  "data": {
+    "schemaVersion": "1.4.0",
+    "mode": "ai",
+    "examType": "C",
+    "stage": "speech",
+    "practiceScore": 82,
+    "scoreVersion": "practice_index_v1.0.0",
+    "scoreStatus": "complete",
+    "scorePolicy": {
+      "version": "practice_index_v1.0.0",
+      "promptVersion": "tope_practice_prompt_v0.6.0",
+      "modelId": "gpt-4o-mini",
+      "label": "TOPE Mate Practice Score",
+      "scope": "stage",
+      "scaleMin": 0,
+      "scaleMax": 100,
+      "weightBasis": "product_defined_not_official",
+      "method": "weighted_average_of_assessed_dimensions_with_renormalization",
+      "configuredWeights": {
+        "relevance": 30,
+        "organization": 15,
+        "development": 10,
+        "language": 25,
+        "taskCompletion": 10,
+        "timeManagement": 10
+      },
+      "disclaimer": "0–100 分为 TOPE Mate 产品内部练习参考分，依据可观察表现生成，用于同类练习的趋势比较；不是人大官方成绩、官方等级换算或正式考试预测。不同题目难度可能不同。",
+      "timingRule": "Timing score is calculated by a fixed product rule from recorded duration and target duration; it is not an official conversion."
+    },
+    "scoreCoverage": {
+      "configuredWeight": 100,
+      "assessedWeight": 100,
+      "coveragePercent": 100,
+      "assessedDimensions": [
+        "relevance",
+        "organization",
+        "development",
+        "language",
+        "taskCompletion",
+        "timeManagement"
+      ],
+      "notAssessedDimensions": [],
+      "comparisonKey": "practice_index_v1.0.0|tope_practice_prompt_v0.6.0|gpt-4o-mini|C|speech|development,language,organization,relevance,taskCompletion,timeManagement|target-180s",
+      "comparisonNote": "仅建议比较 scoreVersion、promptVersion、modelId、examType、stage、已评估维度和适用目标时长一致的练习。即使条件一致，不同题目的主题熟悉度与难度仍可能不同，分数只用于趋势参考。"
+    },
+    "overall": {
+      "score": 82,
+      "maxScore": 100,
+      "label": "practice_reference",
+      "disclaimer": "TOPE Mate 练习参考分（0–100）是产品内部的练习表现指标，用于同类练习的趋势比较；不是人大官方成绩、官方等级换算或正式考试预测。转写文本不能评价发音和语调；缺少带说话人标签的讨论轮次时不能评价真实互动。"
+    },
+    "rubricBasis": {
+      "version": "ruc_tope_official_bands_v1",
+      "framework": "中国人民大学英语口语能力标准（RUC-SOPE）及RUC-TOPE公开测试说明",
+      "area": "演讲与问答",
+      "dimensions": [
+        "话题内容与论述",
+        "词汇语法及语音语调",
+        "时间控制"
+      ],
+      "assessmentMethod": "用户提供的官方评分表采用 1–6 级能力描述；截图未提供可直接复用的百分制权重。TOPE Mate 0–100 练习参考分是独立产品指标，不是官方权重或官方等级换算。",
+      "verificationStatus": "已逐级核对用户上传的 B/C 官方评分表截图（1–6级）。C 表格虽题为“演讲与问答”，逐级条目列出的观察内容为演讲内容、词汇语法及语音语调、时间控制；不据此虚构单独的 Q&A 官方权重。",
+      "sourceUrl": "https://sope.ruc.edu.cn/index/page-297.html"
+    },
+    "officialAssessment": {
+      "scaleMin": 1,
+      "scaleMax": 6,
+      "level": null,
+      "status": "not_predicted",
+      "source": "ruc_tope_official_bands_v1",
+      "note": "官方 1–6 级描述仅作为定性评价锚点；TOPE Mate 不输出官方等级预测。"
+    },
+    "scores": {
+      "relevance": 82,
       "organization": 76,
-      "language": 78,
-      "delivery": null
-    }
+      "development": 78,
+      "language": 80,
+      "interaction": null,
+      "taskCompletion": 84,
+      "timeManagement": 100
+    },
+    "dimensionFeedback": [
+      {
+        "dimension": "relevance",
+        "score": 82,
+        "weight": 30,
+        "normalizedWeight": 30,
+        "rationale": "第一句就给出立场并限定条件，全程围绕是否应当强制。",
+        "evidenceQuotes": [
+          "I believe universities should encourage volunteer work, while keeping participation"
+        ]
+      },
+      {
+        "dimension": "organization",
+        "score": 76,
+        "weight": 15,
+        "normalizedWeight": 15,
+        "rationale": "用 First / For example / In conclusion 推进，结尾回到立场。",
+        "evidenceQuotes": [
+          "In conclusion, I support volunteer opportunities that connect study with real"
+        ]
+      },
+      {
+        "dimension": "development",
+        "score": 78,
+        "weight": 10,
+        "normalizedWeight": 10,
+        "rationale": "用社区阅读辅导的亲身经历支撑论点。",
+        "evidenceQuotes": [
+          "For example, last semester I helped younger students with reading at a"
+        ]
+      },
+      {
+        "dimension": "language",
+        "score": 80,
+        "weight": 25,
+        "normalizedWeight": 25,
+        "rationale": "句式有变化，个别表达可更自然。",
+        "evidenceQuotes": [
+          "That experience also showed me the limits of my"
+        ]
+      },
+      {
+        "dimension": "taskCompletion",
+        "score": 84,
+        "weight": 10,
+        "normalizedWeight": 10,
+        "rationale": "立场加理由，完成了题目的说明任务。",
+        "evidenceQuotes": [
+          "I believe universities should encourage volunteer work, while keeping participation"
+        ]
+      },
+      {
+        "dimension": "timeManagement",
+        "score": 100,
+        "weight": 10,
+        "normalizedWeight": 10,
+        "rationale": "实际录音 176 秒，目标时长 180 秒；该维度由固定产品规则根据时长偏差计算，不是官方换算。",
+        "evidenceQuotes": []
+      }
+    ],
+    "strengths": [
+      "开头即明确立场，听者不需要猜测观点。",
+      "能用可核查的自身经历支撑理由。"
+    ],
+    "weaknesses": [
+      "只展开了一段经历，第二个理由缺少支撑。"
+    ],
+    "suggestions": [
+      "为每个理由准备一个具体例子，长度保持均衡。"
+    ],
+    "evidence": [
+      {
+        "quote": "I believe universities should encourage volunteer work, while keeping participation",
+        "observation": "开门见山，切题。",
+        "dimension": "relevance"
+      },
+      {
+        "quote": "For example, last semester I helped younger students with reading at a",
+        "observation": "经历具体，可被验证。",
+        "dimension": "development"
+      }
+    ],
+    "peel": {
+      "point": "present",
+      "explain": "present",
+      "example": "present",
+      "link": "present"
+    },
+    "peelDetails": {
+      "point": {
+        "quote": "I believe universities should encourage volunteer work, while keeping participation",
+        "note": "提出了明确立场。"
+      },
+      "explain": {
+        "quote": "First, volunteering helps students turn knowledge into practical skills, because they",
+        "note": "解释了技能转化的机制。"
+      },
+      "example": {
+        "quote": "For example, last semester I helped younger students with reading at a",
+        "note": "给出社区辅导的实例。"
+      },
+      "link": {
+        "quote": "In conclusion, I support volunteer opportunities that connect study with real",
+        "note": "结论回扣主张。"
+      }
+    },
+    "improvedExpressions": [
+      {
+        "original": "That experience also showed me the limits of my own patience",
+        "suggested": "That experience also taught me how much patience teaching really takes",
+        "reason": "把抽象的“limits”换成更具体的收获。"
+      }
+    ],
+    "nextPractice": [
+      "练习在两个理由上各展开一个例子，使论证更均衡。"
+    ],
+    "diagnostics": {
+      "wordCount": 81,
+      "detectedSignals": {
+        "point": true,
+        "explain": true,
+        "example": true,
+        "link": true
+      },
+      "timingNote": "本次记录 176 秒；所设目标 180 秒。仅供练习参考，不据此判断发音或内容质量。"
+    },
+    "unassessed": [
+      "pronunciation",
+      "prosody",
+      "audio_fluency"
+    ],
+    "errors": []
   },
-  "strengths": [
-    "The answer gives a concrete campus example."
-  ],
-  "weaknesses": [
-    "The conclusion is not explicit."
-  ],
-  "suggestions": [
-    "Add a one-sentence conclusion linking back to the thesis."
-  ],
-  "evidence": [
-    {
-      "quote": "For example, our study group meets every Tuesday.",
-      "comment": "Specific example supports the argument.",
-      "dimension": "content"
-    }
-  ],
-  "peel": {
-    "point": "Study groups improve learning.",
-    "explain": null,
-    "example": "For example, our study group meets every Tuesday.",
-    "link": null
-  },
-  "improvedExpressions": [
-    {
-      "original": "Study group is good.",
-      "improved": "Study groups help students learn through peer feedback.",
-      "reason": "More precise claim."
-    }
-  ],
-  "notAssessed": [
-    "delivery: no audio-derived assessment"
-  ]
+  "meta": {
+    "questionId": "c-speech-001",
+    "demoOnly": false
+  }
 }

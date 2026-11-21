@@ -1,35 +1,41 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": true,
-  "title": "Evaluation error candidate",
+  "$id": "tope-mate-error-v1",
+  "title": "错误响应 Schema（评分与转写共用，冻结）",
+  "description": "失败响应与成功响应互斥：出错时不得同时带 data，也不得回退成一份假报告。",
   "type": "object",
-  "required": [
-    "success",
-    "error"
-  ],
+  "additionalProperties": false,
+  "required": ["success", "error"],
   "properties": {
-    "success": {
-      "const": false
-    },
+    "success": { "const": false },
     "error": {
       "type": "object",
-      "required": [
-        "code",
-        "message"
-      ],
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
       "properties": {
         "code": {
-          "type": "string",
-          "minLength": 1
+          "enum": [
+            "INVALID_JSON", "INVALID_REQUEST", "EMPTY_TRANSCRIPT", "MODEL_SCHEMA_ERROR",
+            "UNSUPPORTED_FORMAT", "MISSING_AUDIO", "EMPTY_AUDIO", "INVALID_META",
+            "INVALID_CONTENT_TYPE", "MALFORMED_MULTIPART", "BODY_TIMEOUT",
+            "AUDIO_TOO_LARGE", "PAYLOAD_TOO_LARGE",
+            "API_KEY_MISSING", "FETCH_UNAVAILABLE",
+            "PROVIDER_HTTP_ERROR", "PROVIDER_NETWORK_ERROR", "PROVIDER_BAD_RESPONSE", "PROVIDER_TIMEOUT",
+            "CORS_FORBIDDEN", "METHOD_NOT_ALLOWED", "NOT_FOUND", "INTERNAL_ERROR"
+          ]
         },
-        "message": {
-          "type": "string",
-          "minLength": 1
-        },
-        "retryable": {
-          "type": "boolean"
-        }
+        "message": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" }
       }
     }
+  },
+  "x-codes-by-service": {
+    "evaluation (modules/ai-scoring, :3001)": ["INVALID_JSON", "PAYLOAD_TOO_LARGE", "INVALID_REQUEST", "EMPTY_TRANSCRIPT", "API_KEY_MISSING", "MODEL_SCHEMA_ERROR", "PROVIDER_HTTP_ERROR", "PROVIDER_TIMEOUT", "METHOD_NOT_ALLOWED", "NOT_FOUND", "INTERNAL_ERROR"],
+    "transcription (modules/speech-transcription, :3002)": ["INVALID_CONTENT_TYPE", "MALFORMED_MULTIPART", "MISSING_AUDIO", "EMPTY_AUDIO", "INVALID_META", "UNSUPPORTED_FORMAT", "AUDIO_TOO_LARGE", "PAYLOAD_TOO_LARGE", "BODY_TIMEOUT", "API_KEY_MISSING", "FETCH_UNAVAILABLE", "PROVIDER_HTTP_ERROR", "PROVIDER_NETWORK_ERROR", "PROVIDER_BAD_RESPONSE", "PROVIDER_TIMEOUT", "CORS_FORBIDDEN", "METHOD_NOT_ALLOWED", "NOT_FOUND", "INTERNAL_ERROR"]
+  },
+  "x-frontend-rules": {
+    "retryable===false": "不自动重试，直接展示中文原因。",
+    "API_KEY_MISSING": "提示改用离线模式或联系管理员，绝不伪造转写文本或练习分。",
+    "任何错误": "保留用户已确认的转写文本，不清空、不改写；阶段状态置为「分析失败」。"
   }
 }

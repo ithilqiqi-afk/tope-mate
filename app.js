@@ -329,6 +329,8 @@
       } else Rec.release();
     }
     Timer.stop();
+    /* 离开报告页 = 作废在途的转写与评分：过期响应不能盖掉新一轮结果，也别让它继续跑完一次付费调用 */
+    if (route !== "report" && window.TOPE_Pipeline) window.TOPE_Pipeline.cancel("已离开报告页");
     currentRoute = route;
     renderCrumb();
     routes[route](opts);
@@ -376,7 +378,7 @@
       '<section class="page-head">' +
       '<span class="eyebrow">Renmin University · TOPE Speaking</span>' +
       "<h1>选择考试类型，开始一次模拟</h1>" +
-      "<p>TOPE Mate 把真实的 TOPE 流程搬进浏览器：随机抽题、按阶段倒计时、自动切换环节。第一阶段先跑通「能练起来」的流程，评分反馈使用示例数据。</p>" +
+      "<p>TOPE Mate 把真实的 TOPE 流程搬进浏览器：随机抽题、按阶段倒计时、自动切换环节。报告页保留本地示例报告，也可以做真实 AI 分析：后者需要在同一台电脑启动转写与评分两个本地服务，并且只在你确认之后才上传录音。</p>" +
       "</section>" +
       '<div class="grid grid-2">' +
       typeTile("C") + typeTile("B") +
@@ -389,7 +391,7 @@
       feature("30 秒收尾提醒", "陈述只剩 30 秒时弹出提示并响铃，帮你练「不超时也不冷场」的节奏。") +
       feature("可修改的时长配置", "所有阶段时长集中在 config/exam-config.js，也可以在页面「考试设置」里临时调整。") +
       feature("本地题库", "C 端 196 题、B 端 22 组题卡，均来自历年真题与复习资料整理，纯本地不联网。") +
-      feature("示例评分报告", "按 Content / Organization / Language / Delivery 四维给出分数与文字反馈，明确标注为示例数据。") +
+      feature("两种报告", "本地示例报告按四个维度演示；真实 AI 分析按阶段给出转写文本、Schema 1.4.0 分数与文字证据，两者分开展示。") +
       feature("分阶段麦克风录音", "演讲、问答、自我介绍、陈述、讨论各录一段，可回放、可下载，只存在本机内存。") +
       "</div>" +
       '<div class="alert ' + (Rec.supported() ? "info" : "warn") + '"><span class="alert-ico">' +
@@ -399,9 +401,9 @@
           "直接用 file:// 打开时部分浏览器会拒绝麦克风权限。"
         : "本浏览器不支持 MediaRecorder 录音，考试流程仍可正常使用。请改用最新版 Chrome 或 Edge。") +
       "</div></div>" +
-      '<div class="alert warn"><span class="alert-ico">!</span><div><b>尚未实现</b>：语音转写、真实 AI 评分、多人实时小组讨论。' +
-      "当前小组讨论为单人自问自答练习模式；报告页的分数与文字反馈均为本地示例数据。" +
-      "转写与评分的接口位置见 services/transcription.js 与 services/evaluation.js。</div></div>" +
+      '<div class="alert warn"><span class="alert-ico">!</span><div><b>仍然没有</b>：多人实时小组讨论（现在是单人自问自答）、账号与成绩留存、官方等级预测。' +
+      "真实转写与 AI 评分需要在本机启动 modules/speech-transcription 与 modules/ai-scoring 两个服务；" +
+      "服务没启动或没有 API Key 时，报告页只会显示失败原因，不会用假分数顶替。启动方式见根目录 README 与「启动 AI 后端.bat」。</div></div>" +
       "</div>";
 
     document.querySelectorAll("[data-type]").forEach((b) => {
@@ -1351,6 +1353,7 @@
     $("#changeCat").onclick = () => go("category");
     $("#toHome").onclick = () => go("home");
     bindReportAudio();
+    initPipeline();
   };
 
   /* ───────────── 录音回放（报告页） ───────────── */
@@ -1408,24 +1411,428 @@
       rows + "</div>";
   }
 
-  /* 转写与 AI 评分：只报接入状态，没有真实结果就明说，绝不伪造 */
+  /* ───────────── 真实转写 + AI 评分（报告页） ─────────────
+     编排与状态全在 services/ai-pipeline.js，这里只做渲染和用户操作：
+       · 上传录音前必须用户确认；重复点击复用在途请求，不多打一次付费调用。
+       · 原始转写与用户改过的文本分开保存，报告里写明评分用的是哪一份。
+       · 真实结果自成一块，不与上方示例分数混算，也不合成「整场考试总分」。 */
+
+  const PIPE_STATUS = {
+    idle: ["待处理", ""],
+    transcribing: ["正在转写", "accent"],
+    transcribed: ["转写成功 · 等你确认", "ok"],
+    scoring: ["正在评分", "accent"],
+    done: ["分析完成", "ok"],
+    failed: ["分析失败", "bad"],
+    no_evidence: ["未录音或证据不足", "warn"]
+  };
+  let pipeHealth = null;      // 「检查服务状态」的最近一次结果，只存在内存里
+  let pipePendingRender = false;  // 此刻不宜重绘，先记下来，等这一下操作结束再补
+  let pipeComposing = false;      // 输入法正在合成，重绘会打断候选词
+  let pipeGesture = false;        // 按住卡片里的按钮时重绘会把按钮换成新节点，这一下点击就丢了
+
+  function pipeSvc() {
+    const T = window.TOPE_Transcription, E = window.TOPE_Evaluation;
+    const tr = T && T.status ? T.status() : { configured: false, endpoint: "", label: "模块未加载", message: "services/transcription.js 没有加载，无法转写。" };
+    const ev = E && E.status ? E.status() : { configured: false, endpoint: "", label: "模块未加载", message: "services/evaluation.js 没有加载，无法评分。" };
+    return { tr, ev, ready: !!tr.configured && !!ev.configured };
+  }
+
+  /* 每个阶段提交给评分服务的「题目文本」：只用本次会话真实抽到的题，不借用别的阶段 */
+  function pipelineQuestion(key) {
+    const item = S.item || {};
+    if (S.examType === "C") {
+      if (key === "speech") return String(item.en || "");
+      if (key === "qa") return (S.qa || []).join(" / ") || String(item.en || "");
+      return "";
+    }
+    if (key === "intro") {
+      const si = (window.TOPE_BANK_B || {}).selfIntro || {};
+      return String(si.requirement || "");
+    }
+    if (key === "presentation") {
+      const mine = (item.cards || []).find((c) => c.key === S.cardKey) || {};
+      return String(item.topic || "") + (mine.point ? " | Your angle (Card " + mine.key + "): " + mine.point : "");
+    }
+    if (key === "discussion") return String(item.discussion || "");
+    return "";
+  }
+
+  function pipelineContext() {
+    return {
+      sessionId: S.recSid,
+      examType: S.examType,
+      phases: recordablePhases().map((p) => ({
+        key: p.key,
+        name: p.name,
+        question: pipelineQuestion(p.key),
+        questionId: S.item ? S.item.id + ":" + p.key : null,
+        targetDurationSeconds: p.seconds || null
+        /* assessedSpeaker / speakerTurns 故意留空：原型阶段是单人自问自答，
+           没有真实同伴轮次就没有互动证据，宁可不评也不给 interaction 分数。 */
+      }))
+    };
+  }
+
+  /* 报告页每次进入都按当前轮次取一次状态；轮次换了才重建，避免丢掉已经拿到的结果 */
+  function pipelinePhases() {
+    const P = window.TOPE_Pipeline;
+    if (!P) return [];
+    if (P.sessionId !== S.recSid) P.begin(pipelineContext());
+    return P.states();
+  }
+
+  function initPipeline() {
+    pipelinePhases();
+    bindPipeline();
+  }
+
   function aiPipelineCardHtml() {
-    const tr = (window.TOPE_Transcription || { status: () => ({ label: "尚未接入", message: "services/transcription.js 未加载。" }) }).status();
-    const ev = (window.TOPE_Evaluation || { status: () => ({ label: "尚未接入", message: "services/evaluation.js 未加载。" }) }).status();
-    const rows = recordablePhases().map((p) => {
-      const r = Rec.get(p.key);
-      return "<tr><td>" + esc(p.name) + "</td>" +
-        "<td>" + (r ? "已录 " + Rec.mmss(r.durationSeconds) + (r.complete === false ? " · 未完整" : "") : "无音频") + "</td>" +
-        '<td><span class="badge ' + (tr.configured ? "ok" : "accent") + '">' + esc(tr.label) + "</span></td>" +
-        '<td><span class="badge ' + (ev.configured ? "ok" : "accent") + '">' + esc(ev.label) + "</span></td></tr>";
+    return '<div class="card card-pad mt-16" id="aiPipe">' + pipeInnerHtml() + "</div>";
+  }
+
+  function pipeInnerHtml() {
+    const svc = pipeSvc();
+    const stages = pipelinePhases();
+    const anyAudio = recordablePhases().some((p) => !!Rec.get(p.key));
+    const P = window.TOPE_Pipeline;
+    const busy = !!(P && P.busy());
+    return '<h2>真实语音转写与 AI 评分</h2>' +
+      '<div class="alert info"><span class="alert-ico">i</span><div>本页上方的大分数是<b>本地示例</b>，与这一块无关。' +
+      "下面的分数来自真实的转写文本 + 评分服务，<b>按阶段分别给出</b>：单阶段练习分不是整场考试总分，" +
+      "TOPE Mate 也不预测人大官方 1–6 级等级。</div></div>" +
+      (svc.ready ? '<div class="row pipe-svc"><span class="badge ok">转写 ' + esc(svc.tr.label) + "</span>" +
+        '<span class="badge ok">评分 ' + esc(svc.ev.label) + "</span>" +
+        '<span class="small muted">' + esc(svc.tr.endpoint) + " · " + esc(svc.ev.endpoint) + "</span></div>"
+        : '<div class="alert warn"><span class="alert-ico">!</span><div>' +
+          esc(svc.tr.configured ? svc.ev.message : svc.tr.message) + "</div></div>") +
+      pipeToolbarHtml(svc, busy, anyAudio) +
+      (pipeHealth ? pipeHealthHtml() : "") +
+      (stages.length ? stages.map(pipeStageHtml).join("")
+        : '<p class="small muted">本轮没有任何开启录音的阶段（config/exam-config.js 的 record 字段），无法进行真实分析。</p>') +
+      '<p class="small muted mt-16">录音只存在这台电脑的内存里，不写盘、不上传到任何第三方；' +
+      "只有你点「生成 AI 分析」或在某个阶段点「转写这段」之后才会送出。API Key 只放在本地服务的环境变量里，前端读不到，" +
+      "控制台也只会打印请求的方法、路径、状态码和字节数，不打印你的文本。</p>";
+  }
+
+  function pipeToolbarHtml(svc, busy, anyAudio) {
+    const why = !svc.ready ? "服务地址还没配好，按钮暂时不可用。"
+      : !anyAudio ? "本轮没有可用录音：可以重新练习这一阶段，或把别的工具转写出的文本粘贴进来再评分。"
+      : busy ? "已有请求在途，一次只发一个，等它结束再点。" : "";
+    return '<div class="row pipe-bar">' +
+      '<button class="btn primary" type="button" id="pipeRun"' + (busy || !svc.ready || !anyAudio ? " disabled" : "") + ">生成 AI 分析</button>" +
+      '<button class="btn danger" type="button" id="pipeStop"' + (busy ? "" : " disabled") + ">停止在途请求</button>" +
+      '<button class="btn ghost" type="button" id="pipeHealthBtn">检查服务状态</button>' +
+      '<span class="spacer"></span><span class="small muted">' +
+      esc(why || "确认之后才会上传录音；重复点击同一步会复用同一次请求，不会重复计费。") + "</span></div>";
+  }
+
+  function pipeHealthHtml() {
+    const h = pipeHealth;
+    if (h.text) return '<div class="pipe-health"><span class="small muted">' + esc(h.text) + "</span></div>";
+    const one = (name, r) => '<div class="pipe-health"><span class="badge ' + (r.online ? "ok" : "bad") + '">' +
+      esc(name) + (r.online ? " 在线" : " 不可达") + "</span><span class=\"small muted\">" + esc(r.message || "") +
+      (r.keyConfigured === true ? " · 服务端已配置 Key" : r.keyConfigured === false ? " · 服务端没有 Key（只会给离线结果）" : "") +
+      (r.model ? " · " + esc(r.model) : "") + (r.schemaVersion ? " · Schema " + esc(r.schemaVersion) : "") + "</span></div>";
+    return one("转写服务", h.tr) + one("评分服务", h.ev);
+  }
+
+  function pipeStageHtml(s) {
+    const rec = Rec.get(s.key);
+    const P = window.TOPE_Pipeline;
+    const phase = ((P && P.context && P.context.phases) || []).find((p) => p.key === s.key) || {};
+    const st = PIPE_STATUS[s.status] || [s.statusText || s.status, ""];
+    const busy = s.status === "transcribing" || s.status === "scoring";
+    const text = s.edited !== "" ? s.edited : s.original;
+    const edited = s.edited !== "" && s.edited !== s.original;
+    const incomplete = !!rec && rec.complete === false;
+    return '<div class="pipe-stage" data-key="' + esc(s.key) + '">' +
+      '<div class="pipe-head"><span class="pipe-name">' + esc(s.name) + "</span>" +
+      '<span class="badge ' + st[1] + '" data-badge="status">' + esc(st[0]) + "</span>" +
+      (rec ? '<span class="badge ' + (incomplete ? "warn" : "ok") + '">' +
+        esc(incomplete ? "录音未确认完整 " + Rec.mmss(rec.durationSeconds) : "录音 " + Rec.mmss(rec.durationSeconds)) + "</span>"
+        : '<span class="badge">无录音</span>') +
+      '<span class="badge' + (edited ? " brand" : "") + '" data-badge="src">' + esc(edited ? "文本已由你修改" : (s.original ? "原始转写未修改" : "还没有文本")) + "</span>" +
+      (s.attempts ? '<span class="small muted">已请求 ' + s.attempts + " 次</span>" : "") +
+      '<span class="spacer"></span>' +
+      '<button class="btn sm" type="button" data-act="transcribe"' + (busy || !rec ? " disabled" : "") + ">" + (s.original ? "重新转写" : "转写这段") + "</button>" +
+      '<button class="btn sm primary" type="button" data-act="score"' + (busy || !text.trim() ? " disabled" : "") + ">" + (s.report ? "重新评分" : "评分") + "</button>" +
+      "</div>" +
+      (s.error ? '<div class="alert ' + (s.status === "no_evidence" ? "info" : "warn") + '"><span class="alert-ico">!</span><div>' +
+        esc(s.error.message) + (s.error.retryable ? ' <button class="btn sm" type="button" data-act="retry">重试</button>' : "") +
+        '<div class="small muted">错误码 ' + esc(s.error.code || "未知") + "。这一步没有产生任何分数。</div></div></div>" : "") +
+      (incomplete && !phase.allowIncomplete ? '<div class="alert warn"><span class="alert-ico">!</span><div>' +
+        "这段录音没有确认完整结束，默认<b>不会</b>当成完整回答提交评分。建议先听回放或重新练习这一阶段；" +
+        '确认可以用就点下面的按钮，页面会把它记成「按未确认完整的录音评分」。' +
+        '<div class="row mt-16"><button class="btn sm" type="button" data-act="allow">按现有内容评分</button></div></div></div>' : "") +
+      (s.transcribeMeta && s.transcribeMeta.demoOnly ? '<div class="alert sample"><span class="alert-ico">演示</span><div>' +
+        "转写服务返回的是<b>合成演示文本</b>（meta.demoOnly=true），不是真实语音识别结果，不要据此判断成绩。</div></div>" : "") +
+      pipeTranscriptHtml(s, text, edited) +
+      (s.report ? realReportHtml(s) : "") +
+      "</div>";
+  }
+
+  function pipeTranscriptHtml(s, text, edited) {
+    const m = s.transcribeMeta;
+    return '<div class="pipe-text">' +
+      '<label class="pipe-label" for="pipeTa_' + esc(s.key) + '">用于评分的文本' + (edited ? "（你修改后的版本，可继续编辑）" : "（服务返回的原始转写，可修改）") + "</label>" +
+      '<textarea class="pipe-ta" id="pipeTa_' + esc(s.key) + '" rows="4" spellcheck="false" data-key="' + esc(s.key) + '" ' +
+      'placeholder="点「转写这段」生成，或把别的工具转写出的文本粘贴到这里。">' + esc(text) + "</textarea>" +
+      '<div class="row pipe-sub"><span class="small muted" data-count="' + esc(s.key) + '">' + esc(text.length + " 字符") + "</span>" +
+      '<span class="small muted" data-note="' + esc(s.key) + '">' +
+      esc(edited ? "评分将使用你修改后的文本；原始转写原样保留在下面。"
+        : (s.original ? "评分将使用服务返回的原始转写。" : "没有文本时不会提交评分，也不会给你任何分数。")) + "</span>" +
+      '<span class="spacer"></span>' +
+      '<button class="btn sm ghost" type="button" data-act="restore"' + (edited ? "" : " disabled") + ">恢复原始转写</button></div>" +
+      (s.original ? '<details class="pipe-orig"><summary>' + (edited ? "查看原始转写" : "对照原始转写全文") + "</summary>" +
+        '<p class="pipe-quote">' + esc(s.original) + "</p>" +
+        (m ? '<p class="small muted">模型 ' + esc(m.model || "未知") + " · 格式 " + esc(m.format || "未知") +
+          " · 服务端收到 " + esc(m.bytesReceived == null ? "未知字节数" : m.bytesReceived + " 字节") + "</p>" : "") +
+        "</details>" : "") +
+      "</div>";
+  }
+
+  /* ───────────── Schema 1.4.0 报告的渲染（防误标） ───────────── */
+  const PIPE_OVERALL_LABEL = { practice_reference: "练习参考分", not_scored: "未评分", insufficient_evidence: "证据不足" };
+
+  function pipeDimLabels() { return ((window.TOPE_CONFIG || {}).scoring || {}).dimensionLabels || {}; }
+
+  function pipeSec(title, inner) {
+    return inner ? '<div class="pipe-sec"><h3>' + esc(title) + "</h3>" + inner + "</div>" : "";
+  }
+
+  function pipeUl(items) {
+    return "<ul class=\"pipe-ul\">" + items.map((t) => "<li>" + esc(t) + "</li>").join("") + "</ul>";
+  }
+
+  function realReportHtml(s) {
+    const r = s.report || {};
+    const cov = r.scoreCoverage || {};
+    const pol = r.scorePolicy || {};
+    const un = (window.TOPE_CONFIG || {}).scoring || {};
+    /* 未评估项只说能得到证明的：文本证据判不了发音/语调/音频流利度，打分表里没有数字的维度也没评。
+       服务端把已经有分数的维度也列进来时，单独说明，不替它改口。 */
+    const audioUn = ["pronunciation", "prosody", "audio_fluency"];
+    const dimRows = Array.isArray(r.dimensions) ? r.dimensions : [];
+    const hasScore = (k) => Number.isInteger((dimRows.find((d) => d.key === k) || {}).score);
+    const listedUn = Array.isArray(r.unassessed) ? r.unassessed : [];
+    const shownUn = audioUn.concat(dimRows.filter((d) => !hasScore(d.key)).map((d) => d.key));
+    const extraUn = listedUn.filter(hasScore);
+    const unHtml = shownUn.length || listedUn.length
+      ? "<b>未评估项</b>：" + esc(shownUn.join("、")) +
+        "——只有转写文本时无法判断发音、语调和音频流利度，这些一律不给结论；服务端没给分数的维度也同样不作评价。" +
+        (extraUn.length ? '<div class="small muted">服务端同时把 ' + esc(extraUn.join("、")) +
+          " 列进了未评估项，但上面的打分表里这些维度有分数；这里没有替服务端改数，两边不一致请以评分服务为准。</div>" : "")
+      : "";
+    const modeTxt = r.demoOnly ? "合成演示数据"
+      : r.mode === "ai" ? "AI 模型评分"
+      : r.mode === "heuristic" ? "离线文本启发式（没有调用模型）"
+      : r.mode === "mock" ? "开发占位数据" : "模式未知（" + r.mode + "）";
+    const banners =
+      (r.demoOnly ? '<div class="alert sample"><span class="alert-ico">演示</span><div><b>合成演示数据</b>：' +
+        "这份报告由服务端用假数据生成（meta.demoOnly=true）。即使 data.mode 标成 ai，也不代表真实评分，请不要用于判断成绩。</div></div>" : "") +
+      (!r.demoOnly && r.mode === "heuristic" ? '<div class="alert warn"><span class="alert-ico">离线</span><div>' +
+        "评分服务在没有 API Key 或模型输出不合格时走的是<b>离线文本启发式</b>：下面的内容只是按文本给的检查提示，" +
+        "没有练习分，也不是模型对你口语的评价。</div></div>" : "") +
+      (!r.demoOnly && r.mode === "mock" ? '<div class="alert warn"><span class="alert-ico">占位</span><div>服务端返回的是开发用占位数据（mode=mock），只用于联调界面。</div></div>' : "") +
+      (s.transcriptSource === "edited" ? '<div class="alert info"><span class="alert-ico">i</span><div>本次评分用的是<b>你修改后的文本</b>，不是服务返回的原始转写。</div></div>' : "") +
+      (r.recordingComplete === false ? '<div class="alert warn"><span class="alert-ico">!</span><div>这份结果基于<b>未确认完整</b>的录音或文本，只能当参考。</div></div>' : "");
+    const scoreHtml = r.practiceScore === null || r.practiceScore === undefined
+      ? '<div class="pipe-score none"><b>暂无法评分</b><span class="small">' +
+        esc(r.scoreStatus === "not_scored" ? "这次没有可用的练习分（不是 0 分，也不代表你考得差）。" : "练习分这次不可用（不是 0 分）。") + "</span></div>"
+      : '<div class="pipe-score"><b>' + r.practiceScore + "</b><span class=\"small\">这一阶段的练习分 / 100<br>不是整场考试总分</span></div>";
+    const covTxt = r.scoreStatus === "complete" ? "维度覆盖完整"
+      : r.scoreStatus === "partial" ? "部分维度未评估（覆盖 " + (cov.coveragePercent == null ? "?" : cov.coveragePercent) + "%）"
+      : "没有可评维度";
+    const rows = (r.dimensions || []).map((d) => {
+      const w = d.normalizedWeight == null ? d.weight : d.normalizedWeight;
+      return "<tr><td>" + esc(d.label || pipeDimLabels()[d.key] || d.key) + "</td>" +
+        "<td>" + (d.score === null || d.score === undefined ? '<span class="pipe-none">未评估</span>' : d.score) + "</td>" +
+        "<td>" + (w === null || w === undefined ? "—" : w + "%") + "</td>" +
+        "<td>" + (d.rationale ? esc(d.rationale) : '<span class="muted">服务未给出该维度说明</span>') + "</td></tr>";
     }).join("");
-    return '<div class="card card-pad mt-16"><h2>语音转写与 AI 评分</h2>' +
-      '<div class="alert sample"><span class="alert-ico">未接入</span><div>' +
-      "本页上方的分数与文字反馈全部来自本地示例模板，<b>不是</b>对你录音的分析结果。" +
-      esc(tr.message) + " " + esc(ev.message) + "</div></div>" +
-      '<table class="data"><thead><tr><th>阶段</th><th>录音</th><th>转写</th><th>评分</th></tr></thead><tbody>' + rows + "</tbody></table>" +
-      '<p class="small muted mt-16">对接位置：services/transcription.js 的 transcribeAudio() 与 services/evaluation.js 的 evaluateSpeech()；' +
-      "后端地址填在 config/exam-config.js 的 services 段。API Key 只应存在于后端。</p></div>";
+    const peel = r.peelDetails || {};
+    const peelStatus = un.peelStatusLabels || {};
+    const peelTxt = ["point", "explain", "example", "link"].map((k) => {
+      const one = peel[k] || {};
+      const statusKey = r.peel ? r.peel[k] : null;
+      return "<li><b>" + esc((un.peelLabels || {})[k] || k) + "</b> · " + esc(peelStatus[statusKey] || statusKey || "未给出") +
+        (one.quote ? "：<span class=\"pipe-quote\">“" + esc(one.quote) + "”</span>" : "") +
+        (one.note ? '<div class="small muted">' + esc(one.note) + "</div>" : "") + "</li>";
+    }).join("");
+    const evidence = (r.evidence || []).map((e) => "<li><span class=\"pipe-quote\">“" + esc(e.quote) + "”</span> " +
+      esc(e.observation) + (e.dimension ? '<span class="small muted"> · ' + esc(pipeDimLabels()[e.dimension] || e.dimension) + "</span>" : "") + "</li>").join("");
+    const better = (r.improvedExpressions || []).map((x) => "<li>" + esc(x.original) +
+      (x.suggested ? ' <b>→</b> ' + esc(x.suggested) : "") + (x.reason ? '<span class="small muted"> · ' + esc(x.reason) + "</span>" : "") + "</li>").join("");
+    return '<div class="pipe-report" data-key="' + esc(s.key) + '">' +
+      '<div class="pipe-rep-head">' + scoreHtml +
+      '<div class="pipe-rep-meta"><div class="row"><span class="badge ' + (r.demoOnly ? "accent" : r.mode === "ai" ? "ok" : "warn") + '">' +
+      esc(modeTxt) + '</span><span class="badge">' + esc(covTxt) + "</span>" +
+      '<span class="badge brand">' + esc((r.examType || "?") + " · " + (r.stage || s.stage || "?")) + "</span>" +
+      '<span class="small muted">契约 ' + esc(r.contractVersion || "未知") + " · 算法 " + esc(pol.version || "未知") + "</span></div>" +
+      '<div class="small muted">官方等级：<b>不预测</b>（' + esc((r.officialAssessment && r.officialAssessment.note) || "TOPE Mate 不给人大官方 1–6 级预测") + "）</div>" +
+      "</div></div>" +
+      banners +
+      (rows ? '<table class="data pipe-dims"><thead><tr><th>维度</th><th>分数</th><th>权重</th><th>依据</th></tr></thead><tbody>' + rows + "</tbody></table>" : "") +
+      ((r.strengths && r.strengths.length) ? pipeSec("做得好的", pipeUl(r.strengths)) : "") +
+      ((r.weaknesses && r.weaknesses.length) ? pipeSec("需要改进的", pipeUl(r.weaknesses)) : "") +
+      ((r.suggestions && r.suggestions.length) ? pipeSec("建议", pipeUl(r.suggestions)) : "") +
+      (evidence ? pipeSec("文本证据（原话摘录）", '<ul class="pipe-ul">' + evidence + "</ul>") : "") +
+      (peelTxt ? pipeSec("PEEL 结构检查", '<ul class="pipe-ul">' + peelTxt + "</ul>") : "") +
+      (better ? pipeSec("可以更自然的说法", '<ul class="pipe-ul">' + better + "</ul>") : "") +
+      ((r.nextPractice && r.nextPractice.length) ? pipeSec("下一步怎么练", pipeUl(r.nextPractice)) : "") +
+      (unHtml ? '<div class="alert info"><span class="alert-ico">i</span><div>' + unHtml + "</div></div>" : "") +
+      ((r.errors || []).length ? pipeSec("服务返回的问题", pipeUl(r.errors.map((e) => (e.code || "") + "：" + (e.message || "")))) : "") +
+      '<div class="small muted pipe-disc">' + esc(r.disclaimer || (cov.comparisonNote || "分数只用于同类练习之间的趋势参考。")) + "</div></div>";
+  }
+
+  /* ───────────── 报告页 AI 卡片的交互 ───────────── */
+  /* 卡片可以整体重绘，但不能打断正在进行的这一下操作：
+     · 光标位置先记下、重绘后原样恢复，所以异步回来的报告立刻可见，不用先把焦点点走；
+     · 输入法合成期间、按钮按住期间不重绘，松开或合成结束后再补上；
+     · 按钮的 onclick 绑在节点上，按住期间换节点就等于吃掉这一下点击。 */
+  function renderPipeline() {
+    const host = document.getElementById("aiPipe");
+    if (!host) return;
+    if (pipeComposing || pipeGesture) { pipePendingRender = true; return; }
+    const ae = document.activeElement;
+    const keep = ae && ae.classList && ae.classList.contains("pipe-ta") && host.contains(ae)
+      ? { key: ae.dataset.key, start: ae.selectionStart, end: ae.selectionEnd } : null;
+    syncPipeTexts();
+    pipePendingRender = false;
+    host.innerHTML = pipeInnerHtml();
+    bindPipeline();
+    if (!keep) return;
+    const ta = host.querySelector('textarea.pipe-ta[data-key="' + keep.key + '"]');
+    if (!ta) return;
+    ta.focus();
+    ta.setSelectionRange(keep.start, keep.end);
+  }
+
+  /* 把页面上正在编辑的文本立刻写回流水线，重绘才不会丢字 */
+  function syncPipeTexts() {
+    const P = window.TOPE_Pipeline;
+    if (!P) return;
+    document.querySelectorAll("#aiPipe textarea.pipe-ta").forEach((ta) => P.setTranscript(ta.dataset.key, ta.value));
+  }
+
+  function bindPipeline() {
+    const host = document.getElementById("aiPipe");
+    const P = window.TOPE_Pipeline;
+    if (!host || !P) return;
+    if (!host.dataset.gestureBound) {
+      host.dataset.gestureBound = "1";
+      host.addEventListener("pointerdown", () => { pipeGesture = true; });
+      window.addEventListener("pointerup", () => {
+        pipeGesture = false;
+        /* click 比这晚一个任务队列，延后一拍再补重绘，才不会抢在 click 之前换掉按钮 */
+        if (pipePendingRender) setTimeout(() => { if (pipePendingRender) renderPipeline(); }, 0);
+      });
+      window.addEventListener("pointercancel", () => { pipeGesture = false; });
+    }
+    host.querySelector("#pipeRun").onclick = pipeConsent;
+    host.querySelector("#pipeStop").onclick = () => {
+      P.cancel("你点了「停止在途请求」");
+      toast("在途请求已作废；已经完成的阶段结果仍然保留。");
+      renderPipeline();
+    };
+    host.querySelector("#pipeHealthBtn").onclick = probePipeHealth;
+    host.querySelectorAll(".pipe-stage").forEach((row) => {
+      const key = row.dataset.key;
+      row.querySelectorAll("[data-act]").forEach((btn) => { btn.onclick = () => pipeAction(btn.dataset.act, key, row); });
+      const ta = row.querySelector("textarea.pipe-ta");
+      if (!ta) return;
+      ta.oninput = () => {
+        const s = P.setTranscript(key, ta.value);
+        const c = row.querySelector("[data-count]");
+        if (c) c.textContent = ta.value.length + " 字符";
+        const badge = row.querySelector('[data-badge="src"]');
+        if (badge && s) badge.textContent = s.edited !== "" && s.edited !== s.original ? "文本已由你修改" : (s.original ? "原始转写未修改" : "还没有文本");
+        const restore = row.querySelector('[data-act="restore"]');
+        if (restore) restore.disabled = !(s && s.edited !== "" && s.edited !== s.original);
+        const scoreBtn = row.querySelector('[data-act="score"]');
+        if (scoreBtn) scoreBtn.disabled = !String(P.effectiveTranscript(key) || "").trim();
+        const note = row.querySelector("[data-note]");
+        if (note && s) note.textContent = s.edited !== "" && s.edited !== s.original
+          ? "评分将使用你修改后的文本；原始转写原样保留在下面。"
+          : (s.original ? "评分将使用服务返回的原始转写。" : "没有文本时不会提交评分，也不会给你任何分数。");
+      };
+      ta.oncompositionstart = () => { pipeComposing = true; };
+      ta.oncompositionend = () => { pipeComposing = false; if (pipePendingRender) renderPipeline(); };
+    });
+  }
+
+  function pipeAction(act, key, row) {
+    const P = window.TOPE_Pipeline;
+    const ta = row.querySelector("textarea.pipe-ta");
+    if (ta) P.setTranscript(key, ta.value);      // 先存住手打的字，别让下一步重绘丢掉
+    if (act === "allow") { P.confirmIncomplete(key); renderPipeline(); return; }
+    if (act === "restore") {
+      const s = P.get(key);
+      if (s) { P.setTranscript(key, ""); }
+      renderPipeline();
+      return;
+    }
+    const action = act === "retry" ? (P.get(key) && P.get(key).report ? "score" : "transcribe") : act;
+    if (action === "transcribe") {
+      toast("正在把这一段上传到本机转写服务…");
+      renderPipeline();
+      P.transcribe(key).then(renderPipeline, () => renderPipeline());
+      return;
+    }
+    if (action === "score") {
+      toast("正在提交文本评分…");
+      renderPipeline();
+      P.score(key).then(renderPipeline, () => renderPipeline());
+    }
+  }
+
+  /* 上传前的明确确认：说清要传几段、多大、传到哪、是否付费 */
+  function pipeConsent() {
+    const svc = pipeSvc();
+    const P = window.TOPE_Pipeline;
+    if (!P || !svc.ready) { toast("服务地址还没配好，先按 modules 里的 README 启动本地服务。"); return; }
+    const stages = pipelinePhases().filter((s) => !!Rec.get(s.key));
+    if (!stages.length) { toast("本轮没有可用录音，无法上传。"); return; }
+    const bytes = stages.reduce((n, s) => n + (Rec.get(s.key).blob.size || 0), 0);
+    const mask = document.createElement("div");
+    mask.className = "modal-mask";
+    mask.innerHTML = '<div class="modal"><div class="modal-head"><h2>确认上传录音做 AI 分析？</h2>' +
+      '<button class="x-btn" type="button" id="pipeNo">×</button></div><div class="modal-body">' +
+      '<div class="alert warn"><span class="alert-ico">!</span><div>接下来会把 <b>' + stages.length + " 段录音（约 " + kb(bytes) + "）</b>" +
+      "上传到本机的转写服务 " + esc(svc.tr.endpoint || "") + "，转成文本后再按阶段提交评分服务 " + esc(svc.ev.endpoint || "") +
+      "。评分调用可能产生费用；一次只发一个请求，中途可以停止。</div></div>" +
+      '<ul class="pipe-ul">' + stages.map((s) => {
+        const rec = Rec.get(s.key);
+        return "<li>" + esc(s.name) + " · " + esc(Rec.mmss(rec.durationSeconds)) + (rec.complete === false ? " · <b>未确认完整</b>" : "") +
+          (s.original ? " · 已有转写文本，只补评分" : " · 需要转写") + "</li>";
+      }).join("") + "</ul>" +
+      '<p class="small muted">录音只在本机内存里，转写服务只监听 127.0.0.1；API Key 只在服务端环境变量里。' +
+      "日志不会打印你的完整转写内容。没点「确认」之前不会发出任何请求。</p></div>" +
+      '<div class="modal-foot"><button class="btn ghost" type="button" id="pipeNo2">取消</button>' +
+      '<button class="btn primary" type="button" id="pipeYes">确认并开始分析</button></div></div>';
+    document.body.appendChild(mask);
+    const close = () => mask.remove();
+    mask.querySelector("#pipeNo").onclick = close;
+    mask.querySelector("#pipeNo2").onclick = close;
+    mask.querySelector("#pipeYes").onclick = () => {
+      close();
+      renderPipeline();
+      P.analyzeAll().then(() => {
+        renderPipeline();
+        toast("这一轮分析结束：失败或证据不足的阶段会单独标注，页面不会用假分数顶替。");
+      }, () => { renderPipeline(); toast("分析中断，可逐段重试。"); });
+    };
+  }
+
+  function probePipeHealth() {
+    pipeHealth = { text: "正在探测本机服务…" };
+    renderPipeline();
+    const T = window.TOPE_Transcription, E = window.TOPE_Evaluation;
+    Promise.all([
+      T && T.health ? T.health() : Promise.resolve({ online: false, message: "转写模块未加载。" }),
+      E && E.health ? E.health() : Promise.resolve({ online: false, message: "评分模块未加载。" })
+    ]).then((res) => { pipeHealth = { tr: res[0], ev: res[1] }; renderPipeline(); });
   }
 
   function bindReportAudio() {

@@ -1,0 +1,188 @@
+{
+  "success": true,
+  "data": {
+    "schemaVersion": "1.4.0",
+    "mode": "ai",
+    "examType": "B",
+    "stage": "discussion",
+    "practiceScore": 69,
+    "scoreVersion": "practice_index_v1.0.0",
+    "scoreStatus": "partial",
+    "scorePolicy": {
+      "version": "practice_index_v1.0.0",
+      "promptVersion": "tope_practice_prompt_v0.6.0",
+      "modelId": "gpt-4o-mini",
+      "label": "TOPE Mate Practice Score",
+      "scope": "stage",
+      "scaleMin": 0,
+      "scaleMax": 100,
+      "weightBasis": "product_defined_not_official",
+      "method": "weighted_average_of_assessed_dimensions_with_renormalization",
+      "configuredWeights": {
+        "relevance": 25,
+        "development": 15,
+        "language": 20,
+        "interaction": 25,
+        "taskCompletion": 15
+      },
+      "disclaimer": "0–100 分为 TOPE Mate 产品内部练习参考分，依据可观察表现生成，用于同类练习的趋势比较；不是人大官方成绩、官方等级换算或正式考试预测。不同题目难度可能不同。",
+      "timingRule": null
+    },
+    "scoreCoverage": {
+      "configuredWeight": 100,
+      "assessedWeight": 75,
+      "coveragePercent": 75,
+      "assessedDimensions": [
+        "relevance",
+        "development",
+        "language",
+        "taskCompletion"
+      ],
+      "notAssessedDimensions": [
+        "interaction"
+      ],
+      "comparisonKey": "practice_index_v1.0.0|tope_practice_prompt_v0.6.0|gpt-4o-mini|B|discussion|development,language,relevance,taskCompletion|no-time-target",
+      "comparisonNote": "仅建议比较 scoreVersion、promptVersion、modelId、examType、stage、已评估维度和适用目标时长一致的练习。即使条件一致，不同题目的主题熟悉度与难度仍可能不同，分数只用于趋势参考。"
+    },
+    "overall": {
+      "score": 69,
+      "maxScore": 100,
+      "label": "practice_reference",
+      "disclaimer": "TOPE Mate 练习参考分（0–100）是产品内部的练习表现指标，用于同类练习的趋势比较；不是人大官方成绩、官方等级换算或正式考试预测。转写文本不能评价发音和语调；缺少带说话人标签的讨论轮次时不能评价真实互动。"
+    },
+    "rubricBasis": {
+      "version": "ruc_tope_official_bands_v1",
+      "framework": "中国人民大学英语口语能力标准（RUC-SOPE）及RUC-TOPE公开测试说明",
+      "area": "陈述与讨论",
+      "dimensions": [
+        "话题内容",
+        "讨论参与及语用适切",
+        "交际任务完成"
+      ],
+      "assessmentMethod": "用户提供的官方评分表采用 1–6 级能力描述；截图未提供可直接复用的百分制权重。TOPE Mate 0–100 练习参考分是独立产品指标，不是官方权重或官方等级换算。",
+      "verificationStatus": "已逐级核对用户上传的 B/C 官方评分表截图（1–6级）。C 表格虽题为“演讲与问答”，逐级条目列出的观察内容为演讲内容、词汇语法及语音语调、时间控制；不据此虚构单独的 Q&A 官方权重。",
+      "sourceUrl": "https://sope.ruc.edu.cn/index/page-297.html"
+    },
+    "officialAssessment": {
+      "scaleMin": 1,
+      "scaleMax": 6,
+      "level": null,
+      "status": "not_predicted",
+      "source": "ruc_tope_official_bands_v1",
+      "note": "官方 1–6 级描述仅作为定性评价锚点；TOPE Mate 不输出官方等级预测。"
+    },
+    "scores": {
+      "relevance": 74,
+      "organization": null,
+      "development": 68,
+      "language": 72,
+      "interaction": null,
+      "taskCompletion": 58,
+      "timeManagement": null
+    },
+    "dimensionFeedback": [
+      {
+        "dimension": "relevance",
+        "score": 74,
+        "weight": 25,
+        "normalizedWeight": 33.3,
+        "rationale": "针对是否强制服务提出保留意见，切题。",
+        "evidenceQuotes": [
+          "I am not sure a fixed requirement is the right"
+        ]
+      },
+      {
+        "dimension": "development",
+        "score": 68,
+        "weight": 15,
+        "normalizedWeight": 20,
+        "rationale": "用兼职学生的处境支撑保留意见，但没有展开第二个理由。",
+        "evidenceQuotes": [
+          "because some students already work part time to support their families"
+        ]
+      },
+      {
+        "dimension": "language",
+        "score": 72,
+        "weight": 20,
+        "normalizedWeight": 26.7,
+        "rationale": "表达准确，句式略单一。",
+        "evidenceQuotes": [
+          "That way we keep the incentive without punishing the students who have the"
+        ]
+      },
+      {
+        "dimension": "taskCompletion",
+        "score": 58,
+        "weight": 15,
+        "normalizedWeight": 20,
+        "rationale": "提出了替代方案，却没有收敛出小组共同决定。",
+        "evidenceQuotes": [
+          "Perhaps the university could recognise voluntary service on the transcript instead"
+        ]
+      }
+    ],
+    "strengths": [],
+    "weaknesses": [],
+    "suggestions": [
+      "在讨论中明确邀请同伴发言并回应对方观点。"
+    ],
+    "evidence": [
+      {
+        "quote": "I am not sure a fixed requirement is the right",
+        "observation": "立场清楚，但没有向同伴发问或回应。",
+        "dimension": "relevance"
+      }
+    ],
+    "peel": {
+      "point": "not_assessed",
+      "explain": "not_assessed",
+      "example": "not_assessed",
+      "link": "not_assessed"
+    },
+    "peelDetails": {
+      "point": {
+        "quote": null,
+        "note": "此阶段不要求 PEEL；PEEL 也不是人大官方独立评分维度。"
+      },
+      "explain": {
+        "quote": null,
+        "note": "此阶段不要求 PEEL；PEEL 也不是人大官方独立评分维度。"
+      },
+      "example": {
+        "quote": null,
+        "note": "此阶段不要求 PEEL；PEEL 也不是人大官方独立评分维度。"
+      },
+      "link": {
+        "quote": null,
+        "note": "此阶段不要求 PEEL；PEEL 也不是人大官方独立评分维度。"
+      }
+    },
+    "improvedExpressions": [],
+    "nextPractice": [
+      "练习用一句话说出小组最终达成的共同决定。"
+    ],
+    "diagnostics": {
+      "wordCount": 52,
+      "detectedSignals": {
+        "point": false,
+        "explain": true,
+        "example": false,
+        "link": false
+      },
+      "timingNote": "本次记录 214 秒；所设目标 300 秒。仅供练习参考，不据此判断发音或内容质量。"
+    },
+    "unassessed": [
+      "pronunciation",
+      "prosody",
+      "audio_fluency",
+      "interaction",
+      "group_interaction_without_speaker_turns"
+    ],
+    "errors": []
+  },
+  "meta": {
+    "questionId": "b-discussion-014",
+    "demoOnly": false
+  }
+}
