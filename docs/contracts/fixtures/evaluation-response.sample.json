@@ -1,0 +1,45 @@
+{
+  "success": true,
+  "version": "0.1.0",
+  "scores": {
+    "overall": 78,
+    "dimensions": {
+      "content": 80,
+      "organization": 76,
+      "language": 78,
+      "delivery": null
+    }
+  },
+  "strengths": [
+    "The answer gives a concrete campus example."
+  ],
+  "weaknesses": [
+    "The conclusion is not explicit."
+  ],
+  "suggestions": [
+    "Add a one-sentence conclusion linking back to the thesis."
+  ],
+  "evidence": [
+    {
+      "quote": "For example, our study group meets every Tuesday.",
+      "comment": "Specific example supports the argument.",
+      "dimension": "content"
+    }
+  ],
+  "peel": {
+    "point": "Study groups improve learning.",
+    "explain": null,
+    "example": "For example, our study group meets every Tuesday.",
+    "link": null
+  },
+  "improvedExpressions": [
+    {
+      "original": "Study group is good.",
+      "improved": "Study groups help students learn through peer feedback.",
+      "reason": "More precise claim."
+    }
+  ],
+  "notAssessed": [
+    "delivery: no audio-derived assessment"
+  ]
+}
