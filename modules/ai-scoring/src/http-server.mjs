@@ -2,7 +2,7 @@ import http from 'node:http';
 import {pathToFileURL} from 'node:url';
 import {validateRequest,SCHEMA_VERSION} from './contract.mjs';
 import {scoreHeuristic} from './scorer.mjs';
-import {scoreWithOpenAI} from './provider.mjs';
+import {scoreWithOpenAI,resolveTimeoutMs} from './provider.mjs';
 
 export const MAX_BODY_BYTES = 128*1024;
 export const ALLOWED_ORIGINS = new Set(['http://localhost:5173','http://127.0.0.1:5173']);
@@ -60,8 +60,9 @@ function readBody(req){
   });
 }
 
-export function createScoringServer({mode='heuristic',apiKey=process.env.OPENAI_API_KEY,model=process.env.OPENAI_MODEL,fetchImpl=globalThis.fetch,timeoutMs=45000}={}){
+export function createScoringServer({mode='heuristic',provider=process.env.SCORING_PROVIDER||'openai',apiKey=provider==='bailian'?process.env.DASHSCOPE_API_KEY:process.env.OPENAI_API_KEY,model,fetchImpl=globalThis.fetch,timeoutMs}={}){
   if(mode!=='heuristic' && mode!=='ai') throw new RangeError(`Unsupported SCORING_MODE: ${mode}`);
+  if(provider!=='openai' && provider!=='bailian') throw new RangeError(`Unsupported SCORING_PROVIDER: ${provider}`);
   return http.createServer(async (req,res)=>{
     try{
       const path=(req.url||'').split('?')[0];
@@ -91,7 +92,7 @@ export function createScoringServer({mode='heuristic',apiKey=process.env.OPENAI_
         if(!request.transcript.trim()) return sendScoringError(req,res,'EMPTY_TRANSCRIPT');
         if(mode==='ai' && !apiKey) return sendScoringError(req,res,'API_KEY_MISSING');
         const result=mode==='ai'
-          ? await scoreWithOpenAI(request,{apiKey,model,fetchImpl,timeoutMs})
+          ? await scoreWithOpenAI(request,{provider,apiKey,model,fetchImpl,timeoutMs})
           : scoreHeuristic(request);
         if(Array.isArray(result.errors) && result.errors.length>0) return sendScoringError(req,res,result.errors[0].code);
         sendJson(req,res,200,{success:true,data:result,meta:{questionId,demoOnly:false}});
@@ -108,15 +109,21 @@ export function createScoringServer({mode='heuristic',apiKey=process.env.OPENAI_
 
 if(process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href){
   const mode=process.env.SCORING_MODE||'heuristic';
+  const provider=process.env.SCORING_PROVIDER||'openai';
   const port=Number(process.env.PORT||3001);
   if(mode!=='heuristic' && mode!=='ai'){
     console.error(`SCORING_MODE 仅支持 heuristic 或 ai，收到：${mode}`);
     process.exit(1);
   }
-  if(mode==='ai' && !process.env.OPENAI_API_KEY)
-    console.warn('警告：SCORING_MODE=ai 但未配置 OPENAI_API_KEY，/api/evaluate 将返回 503。');
-  const server=createScoringServer({mode});
+  if(provider!=='openai' && provider!=='bailian'){
+    console.error(`SCORING_PROVIDER 仅支持 openai 或 bailian，收到：${provider}`);
+    process.exit(1);
+  }
+  const keyEnv=provider==='bailian'?'DASHSCOPE_API_KEY':'OPENAI_API_KEY';
+  if(mode==='ai' && !process.env[keyEnv])
+    console.warn(`警告：SCORING_MODE=ai 但未配置 ${keyEnv}，/api/evaluate 将返回 503。`);
+  const server=createScoringServer({mode,provider});
   server.listen(port,'127.0.0.1',()=>{
-    console.log(`TOPE Mate scoring server (${mode}) listening on http://127.0.0.1:${port}`);
+    console.log(`TOPE Mate scoring server (${mode}/${provider}) listening on http://127.0.0.1:${port} (timeout ${resolveTimeoutMs(provider)/1000}s)`);
   });
 }

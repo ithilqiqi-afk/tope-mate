@@ -19,16 +19,23 @@ npm run serve
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
-| `SCORING_MODE` | `heuristic` | `heuristic`：离线文本信号提示模式，无需 API Key，`practiceScore` 恒为 `null`，绝不产生假分数。`ai`：调用真实模型（`scoreWithOpenAI`），需要服务端配置 `OPENAI_API_KEY`。其他取值启动即报错。 |
-| `OPENAI_API_KEY` | 无 | 仅 `ai` 模式需要；只能配置在服务端环境变量，不得写入前端代码或提交到仓库。缺失时 `/api/evaluate` 返回 503。 |
-| `OPENAI_MODEL` | `gpt-4o-mini` | 真实 AI 模式使用的模型标识。 |
+| `SCORING_MODE` | `heuristic` | `heuristic`：离线文本信号提示模式，无需 API Key，`practiceScore` 恒为 `null`，绝不产生假分数。`ai`：调用真实模型（`scoreWithOpenAI`），需要服务端配置对应服务商的 API Key。其他取值启动即报错。 |
+| `SCORING_PROVIDER` | `openai` | `openai`：OpenAI Responses API。`bailian`：阿里云百炼 OpenAI 兼容 Responses API（北京地域）。其他取值启动即报错。 |
+| `OPENAI_API_KEY` | 无 | `openai` 服务商的密钥；仅 `ai` 模式需要；只能配置在服务端环境变量，不得写入前端代码或提交到仓库。缺失时 `/api/evaluate` 返回 503。 |
+| `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI 模式使用的模型标识。 |
+| `DASHSCOPE_API_KEY` | 无 | `bailian` 服务商的密钥（阿里云百炼 API Key）；仅 `ai` 模式需要；同样只放服务端环境变量。 |
+| `BAILIAN_MODEL` | `qwen3.8-flash` | 百炼模式使用的模型标识。 |
+| `BAILIAN_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | 百炼 OpenAI 兼容基础地址（北京地域）；可替换为业务空间专属域名 `https://{WorkspaceId}.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`。 |
+| `SCORING_TIMEOUT_MS` | 按服务商：`bailian` 120000，`openai` 45000 | 单次模型请求超时（毫秒），生效范围钳制在 1000–120000；非法值回退到服务商默认。超时返回 504 `PROVIDER_TIMEOUT`，不自动重试。 |
 | `PORT` | `3001` | 监听端口。 |
 
-示例（Windows PowerShell）：
+示例（Windows PowerShell，百炼真实 AI 模式）：
 
 ```powershell
-$env:SCORING_MODE="ai"; $env:OPENAI_API_KEY="<服务器密钥>"; npm run serve
+$env:SCORING_MODE="ai"; $env:SCORING_PROVIDER="bailian"; $env:DASHSCOPE_API_KEY="<服务器密钥>"; npm run serve
 ```
+
+百炼适配说明：请求按官方文档使用嵌套式 `text.format.json_schema`（`name/schema/strict`），OpenAI 路径保持平铺格式不变；因 Qwen3.8 系列 `max_output_tokens` 计入思维链 token，百炼路径的输出上限提高到 16384（OpenAI 仍为 3600）。百炼路径额外发送 `reasoning:{effort:'low'}` 以降低思考耗时（首次真实调用审计显示默认思考强度下单次调用约 119 秒，超过原 45 秒上限），默认超时相应提高到 120 秒，可用 `SCORING_TIMEOUT_MS` 覆盖；OpenAI 路径不发送 `reasoning` 参数，默认超时仍为 45 秒。评分全程单次请求、无自动重试。Schema 1.4.0、评分权重、提示词、证据校验与 HTTP 响应结构均不变。
 
 ## 3. GET /health
 
