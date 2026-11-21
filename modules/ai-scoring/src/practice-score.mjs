@@ -1,4 +1,6 @@
-function hasInteractionEvidence(request){
+/** Shared interaction-evidence rule: the assessed candidate AND another real candidate
+ *  (never the examiner) must both have non-empty turns in a B discussion. */
+export function hasInteractionEvidence(request){
   return request.examType==='B' && request.stage==='discussion' &&
     Array.isArray(request.speakerTurns) && !!request.assessedSpeaker &&
     request.speakerTurns.some(x=>x.speaker===request.assessedSpeaker && x.text?.trim()) &&

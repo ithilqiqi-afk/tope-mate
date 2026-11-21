@@ -1,0 +1,8 @@
+{
+  "success": false,
+  "error": {
+    "code": "EMPTY_TRANSCRIPT",
+    "message": "未提供转写文本，请重新录音或编辑文本后再试。",
+    "retryable": false
+  }
+}

@@ -2,12 +2,13 @@
 
 ## 请求
 
-请求字段沿用 v1.3.0，不改变 A 现有调用入口：
+请求字段沿用 v1.3.0，不改变 A 现有调用入口；新增可选 `questionId`：
 
 ```json
 {
   "examType":"C",
   "question":"...",
+  "questionId":"c-speech-001",
   "stage":"speech",
   "transcript":"...",
   "durationSeconds":176,
@@ -16,7 +17,13 @@
 }
 ```
 
-B 小组讨论可额外传 `assessedSpeaker` 和 `speakerTurns`。互动分只有在目标考生和至少一位其他参与者均有真实轮次时才计算。
+字段约束：`examType` 必填（B/C）；`stage` 必填（B：self_intro/statement/discussion，C：speech/qa）；`question` 必填非空字符串；`questionId` 选填，非空字符串且 ≤128 字符，仅作题目追踪标识，不进入模型提示词、不参与评分判断；`transcript` 必填字符串；`durationSeconds` 必填非负数字；`targetDurationSeconds` 选填正数；`rubric` 选填版本标签。
+
+B 小组讨论可额外传 `assessedSpeaker` 和 `speakerTurns`。互动证据判断由 `practice-score.mjs` 导出的共享函数 `hasInteractionEvidence` 统一提供（`contract.mjs` 复用同一实现）：只有目标考生与另一位真实考生均存在非空发言轮次时才评估互动；`examiner` 不算同伴。
+
+## HTTP 传输层（v0.6 新增）
+
+本地评分服务 `src/http-server.mjs`（`npm run serve`，默认 `http://127.0.0.1:3001`）提供 `GET /health` 与 `POST /api/evaluate`。成功响应包裹为 `{success:true, data:<完整 v1.4.0 报告对象>, meta:{questionId, demoOnly:false}}`；失败响应为 `{success:false, error:{code, message, retryable}}`。状态码：400 非法 JSON、413 请求体超 128 KB、422 字段无效或空 transcript、503 AI 模式缺 API Key、502 模型服务/输出错误、504 模型超时。评分函数产生的 `errors[]` 由服务端转换为对应 HTTP 错误；真实 AI 未成功时不返回分数。详见 `http_integration.md`。
 
 ## 响应新增字段
 

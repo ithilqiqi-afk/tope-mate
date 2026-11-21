@@ -78,6 +78,8 @@ export async function scoreWithOpenAI(request,{apiKey=process.env.OPENAI_API_KEY
   if(typeof fetchImpl!=='function') return errorResult(request,'FETCH_UNAVAILABLE','运行环境不支持 fetch。请使用 Node.js 18+。');
   const focus=rubricFor(request);
   const scoreConfig=getPracticeScoreConfig(request);
+  // questionId is a client-side tracking label only; it must not influence the model.
+  const {questionId,...modelRequest}=request;
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),Math.max(1000,Math.min(timeoutMs,120000)));
   try{
@@ -85,7 +87,7 @@ export async function scoreWithOpenAI(request,{apiKey=process.env.OPENAI_API_KEY
       method:'POST',headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},
       body:JSON.stringify({model,store:false,
         instructions:SYSTEM_PROMPT,
-        input:JSON.stringify({request,practiceRubric:{version:PRACTICE_RUBRIC_VERSION,focus:focus.focus,officialBasis:officialBasisFor(request),peelIsOfficialCriterion:false},
+        input:JSON.stringify({request:modelRequest,practiceRubric:{version:PRACTICE_RUBRIC_VERSION,focus:focus.focus,officialBasis:officialBasisFor(request),peelIsOfficialCriterion:false},
           practiceScoreConfig:{version:scoreConfig.version,promptVersion:PROMPT_VERSION,label:scoreConfig.label,weightBasis:'product_defined_not_official',weights:scoreConfig.configuredWeights,assessedDimensions:scoreConfig.assessedDimensions,notAssessedDimensions:scoreConfig.notAssessedDimensions,descriptions:scoreConfig.descriptions,scoreAnchors:SCORE_ANCHORS,aggregateCalculation:'backend_only'},
           interactionEvidenceAvailable:hasInteractionEvidence(request),officialBands:OFFICIAL_BANDS[request.examType]}),
         text:{format:{type:'json_schema',name:'tope_practice_feedback',strict:true,schema:AI_SCHEMA}},

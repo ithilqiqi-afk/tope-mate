@@ -1,5 +1,6 @@
 import {STAGES,DIMENSIONS,DISCLAIMER,officialBasisFor} from './rubrics.mjs';
-import {getPracticeScoreConfig,SCORE_VERSION,PROMPT_VERSION,SCORE_DISCLAIMER} from './practice-score.mjs';
+import {getPracticeScoreConfig,hasInteractionEvidence,SCORE_VERSION,PROMPT_VERSION,SCORE_DISCLAIMER} from './practice-score.mjs';
+export {hasInteractionEvidence};
 export const SCHEMA_VERSION = '1.4.0';
 const isObj = v => v!==null && typeof v==='object' && !Array.isArray(v);
 export function validateRequest(request) {
@@ -8,6 +9,8 @@ export function validateRequest(request) {
     throw new RangeError('Unsupported examType/stage combination');
   if (typeof request.question!=='string' || !request.question.trim() || request.question.length>3000)
     throw new TypeError('question must be a non-empty string of at most 3000 chars');
+  if (request.questionId!==undefined && (typeof request.questionId!=='string' || !request.questionId.trim() || request.questionId.length>128))
+    throw new TypeError('questionId must be a non-empty string of at most 128 chars');
   if (typeof request.transcript!=='string' || request.transcript.length>30000)
     throw new TypeError('transcript must be a string of at most 30000 chars');
   if (typeof request.durationSeconds!=='number' || !Number.isFinite(request.durationSeconds) || request.durationSeconds<0 || request.durationSeconds>3600)
@@ -23,11 +26,6 @@ export function validateRequest(request) {
       throw new TypeError('speakerTurns must be speaker/text objects (<=150 turns)');
   }
   return true;
-}
-export function hasInteractionEvidence(request){
-  return request.examType==='B' && request.stage==='discussion' &&
-    Array.isArray(request.speakerTurns) && request.speakerTurns.some(x=>x.speaker===request.assessedSpeaker) &&
-    request.speakerTurns.some(x=>x.speaker!==request.assessedSpeaker) && !!request.assessedSpeaker;
 }
 function initialScoreMeta(request){
   const cfg=getPracticeScoreConfig(request);
