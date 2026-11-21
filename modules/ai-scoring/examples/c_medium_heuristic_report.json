@@ -1,0 +1,154 @@
+{
+  "schemaVersion": "1.4.0",
+  "mode": "heuristic",
+  "examType": "C",
+  "stage": "speech",
+  "practiceScore": null,
+  "scoreVersion": "practice_index_v1.0.0",
+  "scoreStatus": "not_scored",
+  "scorePolicy": {
+    "version": "practice_index_v1.0.0",
+    "promptVersion": "tope_practice_prompt_v0.6.0",
+    "modelId": "unconfigured",
+    "label": "TOPE Mate Practice Score",
+    "scope": "stage",
+    "scaleMin": 0,
+    "scaleMax": 100,
+    "weightBasis": "product_defined_not_official",
+    "method": "weighted_average_of_assessed_dimensions_with_renormalization",
+    "configuredWeights": {
+      "relevance": 30,
+      "organization": 15,
+      "development": 10,
+      "language": 25,
+      "taskCompletion": 10,
+      "timeManagement": 10
+    },
+    "disclaimer": "0–100 分为 TOPE Mate 产品内部练习参考分，依据可观察表现生成，用于同类练习的趋势比较；不是人大官方成绩、官方等级换算或正式考试预测。不同题目难度可能不同。",
+    "timingRule": null
+  },
+  "scoreCoverage": {
+    "configuredWeight": 100,
+    "assessedWeight": 0,
+    "coveragePercent": 0,
+    "assessedDimensions": [],
+    "notAssessedDimensions": [
+      "relevance",
+      "organization",
+      "development",
+      "language",
+      "taskCompletion",
+      "timeManagement"
+    ],
+    "comparisonKey": "practice_index_v1.0.0|tope_practice_prompt_v0.6.0|unconfigured|C|speech|development,language,organization,relevance,taskCompletion,timeManagement|target-180s",
+    "comparisonNote": "仅建议比较 scoreVersion、promptVersion、modelId、examType、stage、已评估维度和适用目标时长一致的练习。即使条件一致，不同题目的主题熟悉度与难度仍可能不同，分数只用于趋势参考。"
+  },
+  "overall": {
+    "score": null,
+    "maxScore": 100,
+    "label": "not_scored",
+    "disclaimer": "TOPE Mate 练习参考分（0–100）是产品内部的练习表现指标，用于同类练习的趋势比较；不是人大官方成绩、官方等级换算或正式考试预测。转写文本不能评价发音和语调；缺少带说话人标签的讨论轮次时不能评价真实互动。"
+  },
+  "rubricBasis": {
+    "version": "ruc_tope_official_bands_v1",
+    "framework": "中国人民大学英语口语能力标准（RUC-SOPE）及RUC-TOPE公开测试说明",
+    "area": "演讲与问答",
+    "dimensions": [
+      "话题内容与论述",
+      "词汇语法及语音语调",
+      "时间控制"
+    ],
+    "assessmentMethod": "用户提供的官方评分表采用 1–6 级能力描述；截图未提供可直接复用的百分制权重。TOPE Mate 0–100 练习参考分是独立产品指标，不是官方权重或官方等级换算。",
+    "verificationStatus": "已逐级核对用户上传的 B/C 官方评分表截图（1–6级）。C 表格虽题为“演讲与问答”，逐级条目列出的观察内容为演讲内容、词汇语法及语音语调、时间控制；不据此虚构单独的 Q&A 官方权重。",
+    "sourceUrl": "https://sope.ruc.edu.cn/index/page-297.html"
+  },
+  "officialAssessment": {
+    "scaleMin": 1,
+    "scaleMax": 6,
+    "level": null,
+    "status": "not_predicted",
+    "source": "ruc_tope_official_bands_v1",
+    "note": "官方 1–6 级描述仅作为定性评价锚点；TOPE Mate 不输出官方等级预测。"
+  },
+  "scores": {
+    "relevance": null,
+    "organization": null,
+    "development": null,
+    "language": null,
+    "interaction": null,
+    "taskCompletion": null,
+    "timeManagement": null
+  },
+  "dimensionFeedback": [],
+  "strengths": [
+    "检测到“明确观点”相关表达标记，但尚未核实逻辑质量。",
+    "检测到“解释理由”相关表达标记，但尚未核实逻辑质量。"
+  ],
+  "weaknesses": [],
+  "suggestions": [
+    "尝试补充“具体例子”的信息（目前没有发现典型提示词；若已有自然表达则无需套用模板）。",
+    "尝试补充“回扣主题”的信息（目前没有发现典型提示词；若已有自然表达则无需套用模板）。"
+  ],
+  "evidence": [
+    {
+      "quote": "I think universities should encourage students to volunteer because it is good for everyone",
+      "observation": "可能涉及明确观点，需进一步人工或 AI 判断。",
+      "dimension": "organization"
+    },
+    {
+      "quote": "I think universities should encourage students to volunteer because it is good for everyone",
+      "observation": "可能涉及解释理由，需进一步人工或 AI 判断。",
+      "dimension": "development"
+    }
+  ],
+  "peel": {
+    "point": "partial",
+    "explain": "partial",
+    "example": "absent",
+    "link": "absent"
+  },
+  "peelDetails": {
+    "point": {
+      "quote": "I think universities should encourage students to volunteer because it is good for everyone",
+      "note": "检测到可能相关的表达标记；需由 AI 判断是否真正有效。"
+    },
+    "explain": {
+      "quote": "I think universities should encourage students to volunteer because it is good for everyone",
+      "note": "检测到可能相关的表达标记；需由 AI 判断是否真正有效。"
+    },
+    "example": {
+      "quote": null,
+      "note": "没有检测到常见表达标记；不代表语义上一定缺失。"
+    },
+    "link": {
+      "quote": null,
+      "note": "没有检测到常见表达标记；不代表语义上一定缺失。"
+    }
+  },
+  "improvedExpressions": [],
+  "nextPractice": [
+    "用自己的话提出一个观点，并围绕真实或明确标注为假设的例子说明其意义。"
+  ],
+  "diagnostics": {
+    "wordCount": 57,
+    "detectedSignals": {
+      "point": true,
+      "explain": true,
+      "example": false,
+      "link": false
+    },
+    "timingNote": "本次记录 116 秒；所设目标 180 秒。仅供练习参考，不据此判断发音或内容质量。"
+  },
+  "unassessed": [
+    "pronunciation",
+    "prosody",
+    "audio_fluency",
+    "relevance",
+    "organization",
+    "development",
+    "language",
+    "taskCompletion",
+    "timeManagement"
+  ],
+  "errors": []
+}

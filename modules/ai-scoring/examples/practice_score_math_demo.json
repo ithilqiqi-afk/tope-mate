@@ -1,0 +1,67 @@
+{
+  "demoOnly": true,
+  "notice": "以下维度分数为人为设置的合成数据，只演示后端加权计算，不是模型评分、学生成绩或官方成绩。",
+  "request": {
+    "examType": "C",
+    "stage": "speech",
+    "durationSeconds": 176,
+    "targetDurationSeconds": 180
+  },
+  "syntheticDimensionScores": {
+    "relevance": 82,
+    "organization": 76,
+    "development": 78,
+    "language": 74,
+    "taskCompletion": 85
+  },
+  "result": {
+    "practiceScore": 81,
+    "scoreStatus": "complete",
+    "scores": {
+      "relevance": 82,
+      "organization": 76,
+      "development": 78,
+      "language": 74,
+      "interaction": null,
+      "taskCompletion": 85,
+      "timeManagement": 100
+    },
+    "scorePolicy": {
+      "version": "practice_index_v1.0.0",
+      "promptVersion": "tope_practice_prompt_v0.6.0",
+      "modelId": "synthetic-demo-only",
+      "label": "TOPE Mate Practice Score",
+      "scope": "stage",
+      "scaleMin": 0,
+      "scaleMax": 100,
+      "weightBasis": "product_defined_not_official",
+      "method": "weighted_average_of_assessed_dimensions_with_renormalization",
+      "configuredWeights": {
+        "relevance": 30,
+        "organization": 15,
+        "development": 10,
+        "language": 25,
+        "taskCompletion": 10,
+        "timeManagement": 10
+      },
+      "disclaimer": "0–100 分为 TOPE Mate 产品内部练习参考分，依据可观察表现生成，用于同类练习的趋势比较；不是人大官方成绩、官方等级换算或正式考试预测。不同题目难度可能不同。",
+      "timingRule": "Timing score is calculated by a fixed product rule from recorded duration and target duration; it is not an official conversion."
+    },
+    "scoreCoverage": {
+      "configuredWeight": 100,
+      "assessedWeight": 100,
+      "coveragePercent": 100,
+      "assessedDimensions": [
+        "relevance",
+        "organization",
+        "development",
+        "language",
+        "taskCompletion",
+        "timeManagement"
+      ],
+      "notAssessedDimensions": [],
+      "comparisonKey": "practice_index_v1.0.0|tope_practice_prompt_v0.6.0|synthetic-demo-only|C|speech|development,language,organization,relevance,taskCompletion,timeManagement|target-180s",
+      "comparisonNote": "仅建议比较 scoreVersion、promptVersion、modelId、examType、stage、已评估维度和适用目标时长一致的练习。即使条件一致，不同题目的主题熟悉度与难度仍可能不同，分数只用于趋势参考。"
+    }
+  }
+}

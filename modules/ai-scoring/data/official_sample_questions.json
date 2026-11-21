@@ -1,0 +1,44 @@
+{
+  "source": "用户上传的 RUC-TOPE 官方样题截图",
+  "B": {
+    "theme": "Pressure",
+    "format": {
+      "selfIntroduction": {
+        "groupTotalSecondsApprox": 180
+      },
+      "presentation": {
+        "preparationSeconds": 60,
+        "individualSpeakingSeconds": 90,
+        "threeCandidatesTotalSecondsApprox": 420
+      },
+      "groupDiscussion": {
+        "totalSecondsApprox": 300
+      }
+    },
+    "cards": {
+      "A": "Academic Pressure",
+      "B": "Financial Pressure",
+      "C": "Future Employment Pressure"
+    },
+    "discussion": "Effective ways to relieve pressure",
+    "notes": [
+      "Part II 采用三张不同任务卡；讨论题对 A/B/C 共同适用",
+      "样题给出的时间是本题配置，不代表所有题型统一时长"
+    ]
+  },
+  "C": {
+    "speechTopic": "It is believed that honesty is the best policy. Do you agree or disagree?",
+    "followUps": [
+      "Is it OK to be dishonest? If so, please tell us why?",
+      "How would you explain honesty to a child?"
+    ],
+    "notes": [
+      "本图只给出了演讲题和追问，没有显示额外评分权重。"
+    ]
+  },
+  "sourceImages": [
+    "f09d0b34b0e9eec8c8f5d67d0dbfc0e3.jpg",
+    "ca227b9d71474532ce167a215508b8df.jpg",
+    "49a5ab8bcdec2a085e3d91f53c2d5a2d.jpg"
+  ]
+}

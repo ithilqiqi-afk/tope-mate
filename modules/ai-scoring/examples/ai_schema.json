@@ -1,0 +1,579 @@
+{
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "ai"
+      ]
+    },
+    "examType": {
+      "type": "string",
+      "enum": [
+        "B",
+        "C"
+      ]
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "self_intro",
+        "statement",
+        "discussion",
+        "speech",
+        "qa"
+      ]
+    },
+    "practiceScore": {
+      "type": "null"
+    },
+    "scoreVersion": {
+      "type": "string"
+    },
+    "scoreStatus": {
+      "type": "string",
+      "enum": [
+        "pending"
+      ]
+    },
+    "scorePolicy": {
+      "type": "null"
+    },
+    "scoreCoverage": {
+      "type": "null"
+    },
+    "overall": {
+      "type": "object",
+      "properties": {
+        "score": {
+          "type": "null"
+        },
+        "maxScore": {
+          "type": "integer"
+        },
+        "label": {
+          "type": "string",
+          "enum": [
+            "not_scored"
+          ]
+        },
+        "disclaimer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "score",
+        "maxScore",
+        "label",
+        "disclaimer"
+      ],
+      "additionalProperties": false
+    },
+    "rubricBasis": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "framework": {
+          "type": "string"
+        },
+        "area": {
+          "type": "string"
+        },
+        "dimensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "assessmentMethod": {
+          "type": "string"
+        },
+        "verificationStatus": {
+          "type": "string"
+        },
+        "sourceUrl": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "framework",
+        "area",
+        "dimensions",
+        "assessmentMethod",
+        "verificationStatus",
+        "sourceUrl"
+      ],
+      "additionalProperties": false
+    },
+    "officialAssessment": {
+      "type": "object",
+      "properties": {
+        "scaleMin": {
+          "type": "integer"
+        },
+        "scaleMax": {
+          "type": "integer"
+        },
+        "level": {
+          "type": "null"
+        },
+        "status": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "scaleMin",
+        "scaleMax",
+        "level",
+        "status",
+        "source",
+        "note"
+      ],
+      "additionalProperties": false
+    },
+    "scores": {
+      "type": "object",
+      "properties": {
+        "relevance": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "organization": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "development": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "language": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "interaction": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "taskCompletion": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "timeManagement": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "relevance",
+        "organization",
+        "development",
+        "language",
+        "interaction",
+        "taskCompletion",
+        "timeManagement"
+      ],
+      "additionalProperties": false
+    },
+    "dimensionFeedback": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dimension": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "evidenceQuotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "dimension",
+          "rationale",
+          "evidenceQuotes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "weaknesses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "quote": {
+            "type": "string"
+          },
+          "observation": {
+            "type": "string"
+          },
+          "dimension": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "quote",
+          "observation",
+          "dimension"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "peel": {
+      "type": "object",
+      "properties": {
+        "point": {
+          "type": "string",
+          "enum": [
+            "present",
+            "partial",
+            "absent",
+            "not_assessed"
+          ]
+        },
+        "explain": {
+          "type": "string",
+          "enum": [
+            "present",
+            "partial",
+            "absent",
+            "not_assessed"
+          ]
+        },
+        "example": {
+          "type": "string",
+          "enum": [
+            "present",
+            "partial",
+            "absent",
+            "not_assessed"
+          ]
+        },
+        "link": {
+          "type": "string",
+          "enum": [
+            "present",
+            "partial",
+            "absent",
+            "not_assessed"
+          ]
+        }
+      },
+      "required": [
+        "point",
+        "explain",
+        "example",
+        "link"
+      ],
+      "additionalProperties": false
+    },
+    "peelDetails": {
+      "type": "object",
+      "properties": {
+        "point": {
+          "type": "object",
+          "properties": {
+            "quote": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "quote",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "explain": {
+          "type": "object",
+          "properties": {
+            "quote": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "quote",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "example": {
+          "type": "object",
+          "properties": {
+            "quote": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "quote",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        "link": {
+          "type": "object",
+          "properties": {
+            "quote": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "quote",
+            "note"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "point",
+        "explain",
+        "example",
+        "link"
+      ],
+      "additionalProperties": false
+    },
+    "improvedExpressions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "original": {
+            "type": "string"
+          },
+          "suggested": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "original",
+          "suggested",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "nextPractice": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "properties": {
+        "wordCount": {
+          "type": "integer"
+        },
+        "detectedSignals": {
+          "type": "object",
+          "properties": {
+            "point": {
+              "type": "boolean"
+            },
+            "explain": {
+              "type": "boolean"
+            },
+            "example": {
+              "type": "boolean"
+            },
+            "link": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "point",
+            "explain",
+            "example",
+            "link"
+          ],
+          "additionalProperties": false
+        },
+        "timingNote": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "wordCount",
+        "detectedSignals",
+        "timingNote"
+      ],
+      "additionalProperties": false
+    },
+    "unassessed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "mode",
+    "examType",
+    "stage",
+    "practiceScore",
+    "scoreVersion",
+    "scoreStatus",
+    "scorePolicy",
+    "scoreCoverage",
+    "overall",
+    "rubricBasis",
+    "officialAssessment",
+    "scores",
+    "dimensionFeedback",
+    "strengths",
+    "weaknesses",
+    "suggestions",
+    "evidence",
+    "peel",
+    "peelDetails",
+    "improvedExpressions",
+    "nextPractice",
+    "diagnostics",
+    "unassessed",
+    "errors"
+  ],
+  "additionalProperties": false
+}
