@@ -1,0 +1,9 @@
+{
+  "examType": "C",
+  "stage": "qa",
+  "question": "How would you explain honesty to a child?",
+  "transcript": "I would tell a child that honesty means saying what really happened, even when it is difficult. For example, if you break a cup by accident, you can tell your family the truth and help clean up. That helps people trust each other.",
+  "durationSeconds": 50,
+  "targetDurationSeconds": 120,
+  "rubric": "ruc_tope_official_bands_v1"
+}

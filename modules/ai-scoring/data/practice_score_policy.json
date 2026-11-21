@@ -1,0 +1,143 @@
+{
+  "version": "practice_index_v1.0.0",
+  "name": "TOPE Mate Practice Score",
+  "scale": {
+    "min": 0,
+    "max": 100
+  },
+  "status": "experimental_product_metric_not_calibrated",
+  "notOfficial": true,
+  "notAnOfficialBandConversion": true,
+  "purpose": "帮助学生比较相同考试类型、阶段和证据覆盖条件下的练习表现趋势；不是人大官方成绩或正式考试预测。",
+  "basis": {
+    "officialReference": "RUC-TOPE 官方 1–6 级评分描述，仅作为定性评价锚点",
+    "productWeights": "TOPE Mate 自行制定的初始产品权重，不是人大官方权重",
+    "dimensionScores": "AI 根据题目、转写文本、可用互动轮次和内部 0–100 维度锚点给出",
+    "aggregate": "当前 practiceScore 是单个 examType + stage 的阶段练习分；全流程多阶段总分暂不在本模块合成。"
+  },
+  "dimensionAnchors": [
+    {
+      "range": "90-100",
+      "description": "在该维度上持续表现出色，证据充分，几乎没有明显缺口"
+    },
+    {
+      "range": "80-89",
+      "description": "表现扎实，主要要求均能做到，仅有少量不足"
+    },
+    {
+      "range": "70-79",
+      "description": "整体有效、清楚，仍有一些可识别的改进空间"
+    },
+    {
+      "range": "60-69",
+      "description": "完成主要要求，但表现不够稳定或存在明显缺口"
+    },
+    {
+      "range": "50-59",
+      "description": "只部分满足要求，论述、表达或任务完成存在较明显不足"
+    },
+    {
+      "range": "35-49",
+      "description": "多项关键要求完成不足，证据较少或偏离任务"
+    },
+    {
+      "range": "0-34",
+      "description": "几乎没有展示该维度要求，或回答严重偏题/无法支持判断"
+    }
+  ],
+  "weights": {
+    "B": {
+      "self_intro": {
+        "relevance": 25,
+        "organization": 15,
+        "language": 20,
+        "taskCompletion": 25,
+        "timeManagement": 15
+      },
+      "statement": {
+        "relevance": 25,
+        "organization": 10,
+        "development": 10,
+        "language": 20,
+        "taskCompletion": 25,
+        "timeManagement": 10
+      },
+      "discussion": {
+        "relevance": 25,
+        "development": 15,
+        "language": 20,
+        "interaction": 25,
+        "taskCompletion": 15
+      }
+    },
+    "C": {
+      "speech": {
+        "relevance": 30,
+        "organization": 15,
+        "development": 10,
+        "language": 25,
+        "taskCompletion": 10,
+        "timeManagement": 10
+      },
+      "qa": {
+        "relevance": 30,
+        "development": 25,
+        "language": 25,
+        "taskCompletion": 20
+      }
+    }
+  },
+  "evidenceRules": {
+    "language": "只有转写文本时，只评价词汇、语法和文本可观察的表达；发音、语调、停顿和音频流利度不评分",
+    "interaction": "只有提供 assessedSpeaker 和至少一位其他参与者的真实 speakerTurns 时才评分",
+    "timeManagement": "只有提供 targetDurationSeconds 时才评分；依据 durationSeconds 与目标时长的偏差按固定产品规则计算",
+    "otherMissingEvidence": "未评估维度不按 0 分处理；从总分计算中排除并重新归一化权重"
+  },
+  "timingRule": {
+    "type": "deterministic_product_rule",
+    "notOfficial": true,
+    "thresholds": [
+      {
+        "absoluteRatioDeviationMax": 0.1,
+        "score": 100
+      },
+      {
+        "absoluteRatioDeviationMax": 0.2,
+        "score": 90
+      },
+      {
+        "absoluteRatioDeviationMax": 0.3,
+        "score": 80
+      },
+      {
+        "absoluteRatioDeviationMax": 0.4,
+        "score": 65
+      },
+      {
+        "absoluteRatioDeviationMax": 0.5,
+        "score": 50
+      },
+      {
+        "absoluteRatioDeviationAbove": 0.5,
+        "score": 35
+      }
+    ],
+    "formula": "absolute(durationSeconds / targetDurationSeconds - 1)"
+  },
+  "comparison": {
+    "requiresSame": [
+      "scoreVersion",
+      "promptVersion",
+      "modelId",
+      "examType",
+      "stage",
+      "assessedDimensions",
+      "targetDurationSeconds when timeManagement is assessed"
+    ],
+    "caveat": "不同题目的主题熟悉度与难度可能不同；即使 comparisonKey 一致，也只用于粗略趋势参考。模型或提示词版本变化后不建议直接比较。"
+  },
+  "disclaimer": "0–100 分为 TOPE Mate 产品内部练习参考分，不是人大官方成绩、官方等级换算或正式考试预测。",
+  "moduleVersion": "0.6.0",
+  "promptVersion": "tope_practice_prompt_v0.6.0",
+  "scope": "per_stage_practice_score_not_full_exam_aggregate"
+}

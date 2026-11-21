@@ -1,0 +1,18 @@
+{
+  "version": "dimension_labels_v1.0",
+  "labels": {
+    "relevance": "内容相关性",
+    "organization": "结构组织",
+    "development": "论点展开",
+    "language": "语言表达（仅评价转写文本可观察部分）",
+    "interaction": "讨论互动（需要目标考生与其他考生的真实轮次）",
+    "taskCompletion": "任务完成",
+    "timeManagement": "时间控制（需要目标时长）"
+  },
+  "displayRules": {
+    "practiceScore": "练习参考分（非官方）",
+    "nullDimensionScore": "未评估",
+    "partialCoverage": "本次仅依据部分可用证据评分",
+    "officialLevel": "不展示；officialAssessment.level 始终为 null"
+  }
+}

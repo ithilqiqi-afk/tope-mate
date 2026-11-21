@@ -1,0 +1,6 @@
+{
+  "notice":"Teaching test expectations written by project team, NOT model evaluations or official bands. Quality labels are qualitative design labels only.",
+  "C":{"high":"Clear thesis; developed personal example; recognizes constraints; conclusion connects back to thesis.","medium":"On-topic and clear stance, but lacks specific evidence and organized close.","low":"Repeated general opinion with little reasoning or illustration."},
+  "B_statement":{"high":"Addresses role card; provides reason, example, qualification and close.","medium":"Relevant claim and reason; limited elaboration, no concrete example.","low":"Minimal response with no meaningful development."},
+  "checks":"Offline signal coverage should be high > medium > low for these specifically designed fixtures. This does not establish grading accuracy."
+}

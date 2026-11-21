@@ -1,0 +1,8 @@
+{
+  "success": false,
+  "error": {
+    "code": "API_KEY_MISSING",
+    "message": "服务器尚未配置 AI 评分所需的 API Key，请联系管理员或改用离线模式。",
+    "retryable": false
+  }
+}

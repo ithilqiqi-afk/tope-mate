@@ -1,0 +1,260 @@
+
+> tope-mate-scoring-b@0.6.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: B and C each have all six official holistic rating anchors (summary, not official text)
+ok 1 - B and C each have all six official holistic rating anchors (summary, not official text)
+  ---
+  duration_ms: 2.41136
+  type: 'test'
+  ...
+# Subtest: Official B sample preserves 3 individual cards and 60/90/300 second durations
+ok 2 - Official B sample preserves 3 individual cards and 60/90/300 second durations
+  ---
+  duration_ms: 1.281248
+  type: 'test'
+  ...
+# Subtest: Official C sample contains speech question and two linked Q&A prompts
+ok 3 - Official C sample contains speech question and two linked Q&A prompts
+  ---
+  duration_ms: 0.133379
+  type: 'test'
+  ...
+# Subtest: official fixture official_b_pressure_statement is valid and never receives unofficial grade
+ok 4 - official fixture official_b_pressure_statement is valid and never receives unofficial grade
+  ---
+  duration_ms: 2.098012
+  type: 'test'
+  ...
+# Subtest: official fixture official_b_pressure_discussion is valid and never receives unofficial grade
+ok 5 - official fixture official_b_pressure_discussion is valid and never receives unofficial grade
+  ---
+  duration_ms: 1.02188
+  type: 'test'
+  ...
+# Subtest: official fixture official_c_honesty_speech is valid and never receives unofficial grade
+ok 6 - official fixture official_c_honesty_speech is valid and never receives unofficial grade
+  ---
+  duration_ms: 0.423134
+  type: 'test'
+  ...
+# Subtest: official fixture official_c_honesty_qa is valid and never receives unofficial grade
+ok 7 - official fixture official_c_honesty_qa is valid and never receives unofficial grade
+  ---
+  duration_ms: 0.760129
+  type: 'test'
+  ...
+# Subtest: AI strict schema requires a null official rating
+ok 8 - AI strict schema requires a null official rating
+  ---
+  duration_ms: 0.456052
+  type: 'test'
+  ...
+# Subtest: API response with invented official grade is rejected
+ok 9 - API response with invented official grade is rejected
+  ---
+  duration_ms: 2.025533
+  type: 'test'
+  ...
+# Subtest: PEEL only used for presentation or speech; QA and group discussion do not force it
+ok 10 - PEEL only used for presentation or speech; QA and group discussion do not force it
+  ---
+  duration_ms: 1.163793
+  type: 'test'
+  ...
+# Subtest: Input validation catches invalid stage, duration, rubric and transcript length
+ok 11 - Input validation catches invalid stage, duration, rubric and transcript length
+  ---
+  duration_ms: 1.384393
+  type: 'test'
+  ...
+# Subtest: All stage-specific product weights sum to 100 and are explicitly non-official
+ok 12 - All stage-specific product weights sum to 100 and are explicitly non-official
+  ---
+  duration_ms: 0.738105
+  type: 'test'
+  ...
+# Subtest: Mock and heuristic modes never fabricate AI practice scores
+ok 13 - Mock and heuristic modes never fabricate AI practice scores
+  ---
+  duration_ms: 1.520286
+  type: 'test'
+  ...
+# Subtest: Empty transcript returns explicit error without scoring
+ok 14 - Empty transcript returns explicit error without scoring
+  ---
+  duration_ms: 0.249083
+  type: 'test'
+  ...
+# Subtest: Three C practice levels have descending text-signal coverage; heuristic is not a quality score
+ok 15 - Three C practice levels have descending text-signal coverage; heuristic is not a quality score
+  ---
+  duration_ms: 0.789543
+  type: 'test'
+  ...
+# Subtest: Three B statement levels have descending text-signal coverage
+ok 16 - Three B statement levels have descending text-signal coverage
+  ---
+  duration_ms: 0.533118
+  type: 'test'
+  ...
+# Subtest: C QA does not force PEEL; B discussion without turns leaves interaction unassessed
+ok 17 - C QA does not force PEEL; B discussion without turns leaves interaction unassessed
+  ---
+  duration_ms: 0.447059
+  type: 'test'
+  ...
+# Subtest: Timing dimension is not assessed without target duration
+ok 18 - Timing dimension is not assessed without target duration
+  ---
+  duration_ms: 0.189724
+  type: 'test'
+  ...
+# Subtest: Fixed timing rule is deterministic and bounded
+ok 19 - Fixed timing rule is deterministic and bounded
+  ---
+  duration_ms: 0.449032
+  type: 'test'
+  ...
+# Subtest: Weighted score is computed by backend and rounded; time score is backend-calculated
+ok 20 - Weighted score is computed by backend and rounded; time score is backend-calculated
+  ---
+  duration_ms: 0.748511
+  type: 'test'
+  ...
+# Subtest: Unassessed dimensions are excluded and remaining weights renormalized
+ok 21 - Unassessed dimensions are excluded and remaining weights renormalized
+  ---
+  duration_ms: 0.491076
+  type: 'test'
+  ...
+# Subtest: B discussion interaction becomes assessable only with target and other-speaker turns
+ok 22 - B discussion interaction becomes assessable only with target and other-speaker turns
+  ---
+  duration_ms: 2.192453
+  type: 'test'
+  ...
+# Subtest: No interaction turn data means a model cannot sneak in an interaction score
+ok 23 - No interaction turn data means a model cannot sneak in an interaction score
+  ---
+  duration_ms: 0.269453
+  type: 'test'
+  ...
+# Subtest: AI normalization computes practiceScore and preserves official level as null
+ok 24 - AI normalization computes practiceScore and preserves official level as null
+  ---
+  duration_ms: 0.619578
+  type: 'test'
+  ...
+# Subtest: Model cannot provide aggregate score or official grade
+ok 25 - Model cannot provide aggregate score or official grade
+  ---
+  duration_ms: 0.376093
+  type: 'test'
+  ...
+# Subtest: Evidence validation rejects invented transcript quote and rewritten source
+ok 26 - Evidence validation rejects invented transcript quote and rewritten source
+  ---
+  duration_ms: 0.22654
+  type: 'test'
+  ...
+# Subtest: Dimension feedback quote may cite exact supplied speaker turn text only
+ok 27 - Dimension feedback quote may cite exact supplied speaker turn text only
+  ---
+  duration_ms: 0.244527
+  type: 'test'
+  ...
+# Subtest: AI request uses strict schema and passes stage weights to model
+ok 28 - AI request uses strict schema and passes stage weights to model
+  ---
+  duration_ms: 1.303251
+  type: 'test'
+  ...
+# Subtest: Model refuses or supplies invented quote: fail closed
+ok 29 - Model refuses or supplies invented quote: fail closed
+  ---
+  duration_ms: 0.622232
+  type: 'test'
+  ...
+# Subtest: Provider HTTP error, missing key, network failure return structured error
+ok 30 - Provider HTTP error, missing key, network failure return structured error
+  ---
+  duration_ms: 1.857791
+  type: 'test'
+  ...
+# Subtest: Empty transcript must not make external provider call
+ok 31 - Empty transcript must not make external provider call
+  ---
+  duration_ms: 0.199399
+  type: 'test'
+  ...
+# Subtest: AI strict schema is closed and requires backend-only aggregate placeholders
+ok 32 - AI strict schema is closed and requires backend-only aggregate placeholders
+  ---
+  duration_ms: 0.273129
+  type: 'test'
+  ...
+# Subtest: Official B and C basis remains visible but separate from product scoring
+ok 33 - Official B and C basis remains visible but separate from product scoring
+  ---
+  duration_ms: 1.323121
+  type: 'test'
+  ...
+# Subtest: Legacy practice_v1 request is accepted but output carries new score version
+ok 34 - Legacy practice_v1 request is accepted but output carries new score version
+  ---
+  duration_ms: 0.205899
+  type: 'test'
+  ...
+# Subtest: Comparison key is stable only for the same score, prompt, model and evidence configuration
+ok 35 - Comparison key is stable only for the same score, prompt, model and evidence configuration
+  ---
+  duration_ms: 0.339498
+  type: 'test'
+  ...
+# Subtest: Normalized AI report records model and prompt versions for longitudinal comparison
+ok 36 - Normalized AI report records model and prompt versions for longitudinal comparison
+  ---
+  duration_ms: 0.590324
+  type: 'test'
+  ...
+# Subtest: Examiner-only turns do not count as B peer interaction evidence
+ok 37 - Examiner-only turns do not count as B peer interaction evidence
+  ---
+  duration_ms: 0.388722
+  type: 'test'
+  ...
+# Subtest: Official dimensions in output match the uploaded B/C rating-table screenshots
+ok 38 - Official dimensions in output match the uploaded B/C rating-table screenshots
+  ---
+  duration_ms: 0.70187
+  type: 'test'
+  ...
+# Subtest: Canonical v0.6 system prompt keeps official descriptors separate from product score
+ok 39 - Canonical v0.6 system prompt keeps official descriptors separate from product score
+  ---
+  duration_ms: 0.254731
+  type: 'test'
+  ...
+# Subtest: Provider response model identifier is preserved in Practice Score comparison metadata
+ok 40 - Provider response model identifier is preserved in Practice Score comparison metadata
+  ---
+  duration_ms: 1.132836
+  type: 'test'
+  ...
+# Subtest: Machine-readable policy weights stay synchronized with runtime stage weights
+ok 41 - Machine-readable policy weights stay synchronized with runtime stage weights
+  ---
+  duration_ms: 0.810274
+  type: 'test'
+  ...
+1..41
+# tests 41
+# suites 0
+# pass 41
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 139.220633

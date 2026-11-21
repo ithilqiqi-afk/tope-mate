@@ -1,0 +1,24 @@
+{
+  "examType": "B",
+  "stage": "discussion",
+  "question": "Effective ways to relieve pressure",
+  "transcript": "I agree that planning is useful, but I also think talking to friends matters. What do you think?",
+  "durationSeconds": 60,
+  "targetDurationSeconds": 300,
+  "rubric": "ruc_tope_official_bands_v1",
+  "assessedSpeaker": "B",
+  "speakerTurns": [
+    {
+      "speaker": "A",
+      "text": "Planning your assignments ahead of time can reduce stress."
+    },
+    {
+      "speaker": "B",
+      "text": "I agree that planning is useful, but I also think talking to friends matters. What do you think?"
+    },
+    {
+      "speaker": "C",
+      "text": "Yes, sharing problems can be helpful too."
+    }
+  ]
+}

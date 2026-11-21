@@ -1,0 +1,9 @@
+{
+  "examType": "C",
+  "stage": "speech",
+  "question": "It is believed that honesty is the best policy. Do you agree or disagree?",
+  "transcript": "I believe honesty is important, but it should be combined with kindness. My first reason is that honesty builds trust. For example, when I made a mistake during a group project, I admitted it to my teammates. We fixed the problem together instead of blaming each other. This shows why honest communication matters. My second point is that we should think about how we speak. Because harsh words may hurt someone, we can tell the truth respectfully. In conclusion, I support honesty because it builds trust, but we should also consider people's feelings.",
+  "durationSeconds": 166,
+  "targetDurationSeconds": 180,
+  "rubric": "ruc_tope_official_bands_v1"
+}

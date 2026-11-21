@@ -1,0 +1,182 @@
+
+> tope-mate-scoring-b@0.5.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: B and C each have all six official holistic rating anchors (summary, not official text)
+ok 1 - B and C each have all six official holistic rating anchors (summary, not official text)
+  ---
+  duration_ms: 1.969019
+  type: 'test'
+  ...
+# Subtest: Official B sample preserves 3 individual cards and 60/90/300 second durations
+ok 2 - Official B sample preserves 3 individual cards and 60/90/300 second durations
+  ---
+  duration_ms: 0.274789
+  type: 'test'
+  ...
+# Subtest: Official C sample contains speech question and two linked Q&A prompts
+ok 3 - Official C sample contains speech question and two linked Q&A prompts
+  ---
+  duration_ms: 0.150103
+  type: 'test'
+  ...
+# Subtest: official fixture official_b_pressure_statement is valid and never receives unofficial grade
+ok 4 - official fixture official_b_pressure_statement is valid and never receives unofficial grade
+  ---
+  duration_ms: 2.62836
+  type: 'test'
+  ...
+# Subtest: official fixture official_b_pressure_discussion is valid and never receives unofficial grade
+ok 5 - official fixture official_b_pressure_discussion is valid and never receives unofficial grade
+  ---
+  duration_ms: 0.848563
+  type: 'test'
+  ...
+# Subtest: official fixture official_c_honesty_speech is valid and never receives unofficial grade
+ok 6 - official fixture official_c_honesty_speech is valid and never receives unofficial grade
+  ---
+  duration_ms: 0.399785
+  type: 'test'
+  ...
+# Subtest: official fixture official_c_honesty_qa is valid and never receives unofficial grade
+ok 7 - official fixture official_c_honesty_qa is valid and never receives unofficial grade
+  ---
+  duration_ms: 0.335319
+  type: 'test'
+  ...
+# Subtest: AI strict schema requires a null official rating
+ok 8 - AI strict schema requires a null official rating
+  ---
+  duration_ms: 0.16785
+  type: 'test'
+  ...
+# Subtest: API response with invented official grade is rejected
+ok 9 - API response with invented official grade is rejected
+  ---
+  duration_ms: 1.472361
+  type: 'test'
+  ...
+# Subtest: PEEL only used for presentation or speech; QA and group discussion do not force it
+ok 10 - PEEL only used for presentation or speech; QA and group discussion do not force it
+  ---
+  duration_ms: 1.005666
+  type: 'test'
+  ...
+# Subtest: Input validation catches invalid stage, duration, rubric and transcript length
+ok 11 - Input validation catches invalid stage, duration, rubric and transcript length
+  ---
+  duration_ms: 1.735512
+  type: 'test'
+  ...
+# Subtest: Mock never fabricates scores or evidence
+ok 12 - Mock never fabricates scores or evidence
+  ---
+  duration_ms: 0.99439
+  type: 'test'
+  ...
+# Subtest: Empty transcript returns explicit error without scoring
+ok 13 - Empty transcript returns explicit error without scoring
+  ---
+  duration_ms: 1.091714
+  type: 'test'
+  ...
+# Subtest: Three C practice levels have descending text-signal coverage; no quality score
+ok 14 - Three C practice levels have descending text-signal coverage; no quality score
+  ---
+  duration_ms: 1.538779
+  type: 'test'
+  ...
+# Subtest: Three B statement levels have descending text-signal coverage
+ok 15 - Three B statement levels have descending text-signal coverage
+  ---
+  duration_ms: 0.682034
+  type: 'test'
+  ...
+# Subtest: C QA does not force PEEL; discussion without speaker turns leaves interaction unassessed
+ok 16 - C QA does not force PEEL; discussion without speaker turns leaves interaction unassessed
+  ---
+  duration_ms: 0.54405
+  type: 'test'
+  ...
+# Subtest: Offline time notes distinguish 90/120 sec statement variants without giving time score
+ok 17 - Offline time notes distinguish 90/120 sec statement variants without giving time score
+  ---
+  duration_ms: 0.542137
+  type: 'test'
+  ...
+# Subtest: Evidence validation rejects invented transcript quote and rewritten source
+ok 18 - Evidence validation rejects invented transcript quote and rewritten source
+  ---
+  duration_ms: 0.565361
+  type: 'test'
+  ...
+# Subtest: AI normalization discards model scores and never fabricates official weighted grade
+ok 19 - AI normalization discards model scores and never fabricates official weighted grade
+  ---
+  duration_ms: 1.025616
+  type: 'test'
+  ...
+# Subtest: B discussion without turns is not given a fake overall interaction rating
+ok 20 - B discussion without turns is not given a fake overall interaction rating
+  ---
+  duration_ms: 0.741744
+  type: 'test'
+  ...
+# Subtest: B discussion with real speaker turns receives qualitative feedback but never numeric official-like score
+ok 21 - B discussion with real speaker turns receives qualitative feedback but never numeric official-like score
+  ---
+  duration_ms: 0.468326
+  type: 'test'
+  ...
+# Subtest: API request uses strict structured outputs; stubbed successful provider normalized
+ok 22 - API request uses strict structured outputs; stubbed successful provider normalized
+  ---
+  duration_ms: 1.329488
+  type: 'test'
+  ...
+# Subtest: Model refuses or supplies invented quote: fail closed
+ok 23 - Model refuses or supplies invented quote: fail closed
+  ---
+  duration_ms: 1.337189
+  type: 'test'
+  ...
+# Subtest: Provider HTTP error, missing key, network failure return structured error
+ok 24 - Provider HTTP error, missing key, network failure return structured error
+  ---
+  duration_ms: 0.683076
+  type: 'test'
+  ...
+# Subtest: Empty transcript must not make external provider call
+ok 25 - Empty transcript must not make external provider call
+  ---
+  duration_ms: 0.145717
+  type: 'test'
+  ...
+# Subtest: AI response schema is strict top-level object
+ok 26 - AI response schema is strict top-level object
+  ---
+  duration_ms: 0.13421
+  type: 'test'
+  ...
+# Subtest: Official B and C basis uses verified public competency dimensions and reports holistic method
+ok 27 - Official B and C basis uses verified public competency dimensions and reports holistic method
+  ---
+  duration_ms: 0.546533
+  type: 'test'
+  ...
+# Subtest: Deprecated input practice_v1 still accepted, output always follows official public objectives
+ok 28 - Deprecated input practice_v1 still accepted, output always follows official public objectives
+  ---
+  duration_ms: 0.1281
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 88.136318
