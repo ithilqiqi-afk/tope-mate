@@ -28,10 +28,13 @@ export function normalizeAIResult(raw,req,{modelId='unconfigured'}={}){
     throw new Error('Model must not return an aggregate practice score or official level');
   const activeModelDims=config.assessedDimensions.filter(k=>k!=='timeManagement');
   const feedbackByDim=new Map(raw.dimensionFeedback.map(x=>[x.dimension,x]));
+  // AI_SCHEMA 允许每个维度留 null，calculatePracticeScore 也支持「缺哪个维度就重新归一化哪个权重」，
+  // 所以短回答里模型把组织/展开判为「证据不足、无法评估」不是无效报告：该维度按未评估处理，不按 0 分处理。
+  // 仍然 fail closed 的两条：给了分就必须给文字解释；一个可用维度分都没有，就没有任何练习分可算。
   for(const dim of activeModelDims){
-    if(!Number.isInteger(raw.scores[dim])) throw new Error(`Missing dimension score: ${dim}`);
-    if(!feedbackByDim.has(dim)) throw new Error(`Missing dimension rationale: ${dim}`);
+    if(Number.isInteger(raw.scores[dim])&&!feedbackByDim.has(dim)) throw new Error(`Missing dimension rationale: ${dim}`);
   }
+  if(!activeModelDims.some(dim=>Number.isInteger(raw.scores[dim]))) throw new Error('No assessable dimension score in model output');
   for(const dim of DIMENSIONS){
     if(!activeModelDims.includes(dim) && raw.scores[dim]!==null) throw new Error(`Inactive dimension must be null: ${dim}`);
   }

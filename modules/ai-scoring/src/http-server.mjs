@@ -1,6 +1,7 @@
 import http from 'node:http';
 import {pathToFileURL} from 'node:url';
 import {validateRequest,SCHEMA_VERSION} from './contract.mjs';
+import {DIMENSIONS} from './rubrics.mjs';
 import {scoreHeuristic} from './scorer.mjs';
 import {scoreWithOpenAI,resolveTimeoutMs} from './provider.mjs';
 import {scoreWithBailian,DEFAULT_BAILIAN_MODEL,DEFAULT_BAILIAN_TRANSPORT,BAILIAN_TRANSPORTS,resolveBailianTransport} from './bailian-provider.mjs';
@@ -31,6 +32,43 @@ export function resolveProvider(value){
   const name=String(value||'openai').trim().toLowerCase();
   if(!PROVIDERS.has(name)) throw new RangeError(`Unsupported SCORING_PROVIDER: ${value}`);
   return name;
+}
+
+/* INVALID_MODEL_OUTPUT 对外只能说「没过校验」，而具体是哪一条校验原先在 HTTP 边界就被丢掉了，
+   本机出一次故障就只能靠猜。下面把校验异常映射成固定规则名（最多附一个维度枚举名）；
+   匹配不到就是 UNSPECIFIED，任何情况下都不会把模型原文、转写内容或密钥带进这条诊断。 */
+const VALIDATION_RULES = [
+  [/有效的结构化反馈/, 'MODEL_TEXT_NOT_JSON'],
+  [/不是可解析的 JSON/, 'PROVIDER_BODY_NOT_JSON'],
+  [/AI response must be a JSON object/, 'NOT_A_JSON_OBJECT'],
+  [/Response mode must be ai/, 'MODE_NOT_AI'],
+  [/Response stage mismatch/, 'STAGE_MISMATCH'],
+  [/Missing official rubric basis/, 'MISSING_RUBRIC_BASIS'],
+  [/Must not report an official level/, 'OFFICIAL_LEVEL_PREDICTED'],
+  [/Missing scores\/PEEL/, 'MISSING_SCORES_OR_PEEL'],
+  [/Invalid score:/, 'INVALID_DIMENSION_SCORE'],
+  [/Missing array:/, 'MISSING_REQUIRED_ARRAY'],
+  [/^Invalid (?:strengths|weaknesses|suggestions|nextPractice|unassessed)$/, 'INVALID_ARRAY_ITEM_TYPE'],
+  [/Invalid dimension feedback item/, 'INVALID_DIMENSION_FEEDBACK_ITEM'],
+  [/Dimension feedback quote must be verbatim/, 'NON_VERBATIM_FEEDBACK_QUOTE'],
+  [/Invented PEEL quote:/, 'INVENTED_PEEL_QUOTE'],
+  [/Invalid PEEL status:/, 'INVALID_PEEL_STATUS'],
+  [/Invalid PEEL detail:/, 'INVALID_PEEL_DETAIL'],
+  [/Evidence must quote transcript verbatim/, 'NON_VERBATIM_EVIDENCE'],
+  [/Improved expressions must quote transcript verbatim/, 'NON_VERBATIM_IMPROVED_EXPRESSION'],
+  [/must not return an aggregate practice score/, 'MODEL_RETURNED_AGGREGATE_SCORE'],
+  [/Missing dimension rationale:/, 'MISSING_DIMENSION_RATIONALE'],
+  [/No assessable dimension score/, 'NO_ASSESSABLE_DIMENSION_SCORE'],
+  [/Inactive dimension must be null:/, 'INACTIVE_DIMENSION_SCORED']
+];
+export function validationReasonOf(message){
+  const text=String(message||'');
+  for(const [pattern,rule] of VALIDATION_RULES){
+    if(!pattern.test(text)) continue;
+    const dimension=DIMENSIONS.find(key=>text.includes(key));
+    return dimension?`${rule}:${dimension}`:rule;
+  }
+  return 'UNSPECIFIED';
 }
 
 function corsHeaders(req){
@@ -124,7 +162,12 @@ export function createScoringServer({mode='heuristic',provider=process.env.SCORI
                   : await scoreWithOpenAI(request,{provider:'bailian',apiKey:activeKey,model:activeModel,baseUrl:bailianBaseUrl,fetchImpl,timeoutMs:activeTimeoutMs}))
               : await scoreWithOpenAI(request,{provider:'openai',apiKey:activeKey,model:activeModel,fetchImpl,timeoutMs:activeTimeoutMs}))
           : scoreHeuristic(request);
-        if(Array.isArray(result.errors) && result.errors.length>0) return sendScoringError(req,res,result.errors[0].code);
+        if(Array.isArray(result.errors) && result.errors.length>0){
+          const {code,message}=result.errors[0];
+          // 诊断只打固定规则名：转写原文、模型原文与密钥都不进日志，也不进对外响应。
+          if(code==='INVALID_MODEL_OUTPUT') console.log(`[scoring] INVALID_MODEL_OUTPUT rule=${validationReasonOf(message)}`);
+          return sendScoringError(req,res,code);
+        }
         sendJson(req,res,200,{success:true,data:result,meta:{questionId,demoOnly:false}});
         return;
       }

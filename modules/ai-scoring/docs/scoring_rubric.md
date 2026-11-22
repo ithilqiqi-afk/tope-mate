@@ -46,6 +46,8 @@ AI 只对当前阶段可评估的维度给出 0–100 整数分、理由及证�
 
 未评估维度必须为 `null`，从分子和分母中排除，并降低 `scoreCoverage.coveragePercent`。不能将未评估维度按 0 分处理。没有任何可评估维度时，总分为 `null`。
 
+模型把某个可评估维度写成 `null`（录音太短、文本证据不足时的常见输出）按未评估处理：该维度出现在 `scoreCoverage.notAssessedDimensions` 与 `unassessed` 里，`scoreStatus` 变为 `partial`，不因此判整份报告无效。仍然 fail closed 的两条：给了分数就必须给文字解释；所有可评估维度都没有分数时返回 `INVALID_MODEL_OUTPUT`（诊断规则名 `NO_ASSESSABLE_DIMENSION_SCORE`），不产出练习分。
+
 时间控制分由后端根据 `durationSeconds` 与 `targetDurationSeconds` 的固定规则计算，不由模型自由估分；这也是产品内部规则，不是官方时间换算。
 
 ## 5. 版本与纵向比较
